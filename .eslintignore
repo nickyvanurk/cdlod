@@ -1,0 +1,6 @@
+.vscode/*
+dist/*
+coverage/*
+docs/*
+node_modules/*
+public/*
