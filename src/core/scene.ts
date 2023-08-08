@@ -2,12 +2,15 @@ import * as THREE from 'three';
 
 import '@ui/style.css';
 
+import { QuadTree } from './quad_tree';
+
 export class Scene {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
 
   private cube: THREE.Mesh;
+  private tree: QuadTree;
 
   constructor() {
     this.renderer = new THREE.WebGLRenderer();
@@ -22,6 +25,8 @@ export class Scene {
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     this.cube = new THREE.Mesh(geometry, material);
     this.scene.add(this.cube);
+
+    this.tree = new QuadTree();
 
     window.addEventListener('resize', this.handleResize.bind(this), false);
   }
