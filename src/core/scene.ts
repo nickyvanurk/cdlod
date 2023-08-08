@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import '@ui/style.css';
 
@@ -8,6 +9,7 @@ export class Scene {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
+  private controls: OrbitControls;
 
   private cube: THREE.Mesh;
   private tree: QuadTree;
@@ -20,6 +22,8 @@ export class Scene {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.camera.position.z = 5;
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -37,6 +41,7 @@ export class Scene {
     this.cube.rotation.x += 0.01;
     this.cube.rotation.y += 0.01;
 
+    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 
