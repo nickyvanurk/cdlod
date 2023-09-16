@@ -26,12 +26,29 @@ export class Terrain extends Group {
     this.add(plane);
 
     const heightmapUrl =
-      'https://service.pdok.nl/rws/ahn/wms/v1_0?SERVICE=WMS&request=GetMap&version=1.3.0&Layers=dsm_05m&styles=default&crs=EPSG:28992&bbox=-285401.92,22598.08,595401.92,903401.92&width=129&height=129&format=image/jpeg';
+      'https://service.pdok.nl/rws/ahn/wms/v1_0?SERVICE=WMS&request=GetMap&version=1.3.0&Layers=dtm_05m&styles=default&crs=EPSG:28992&bbox=-285401.92,22598.08,595401.92,903401.92&width=129&height=129&format=image/jpeg';
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = 'Anonymous';
-    const tex = textureLoader.load(heightmapUrl, () => {
+    textureLoader.load(heightmapUrl, (tex) => {
       plane.material.map = tex;
       plane.material.needsUpdate = true;
+
+      const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+      const ctx = canvas!.getContext('2d')!;
+      canvas.width = 129;
+      canvas.height = 129;
+      ctx.drawImage(tex.source.data, 0, 0);
+
+      for (let y = 0; y < 129; y++) {
+        const v = [];
+        for (let x = 0; x < 129; x++) {
+          const pixel = ctx.getImageData(x, y, 1, 1).data; // rgba
+          if (pixel[0] !== 255 || pixel[1] !== 255 || pixel[2] !== 255) {
+            v.push(pixel);
+          }
+        }
+        console.log(v);
+      }
     });
 
     console.log('New terrain');
