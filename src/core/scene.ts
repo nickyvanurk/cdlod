@@ -11,7 +11,6 @@ export class Scene {
   private camera: THREE.PerspectiveCamera;
   private controls: MapControls;
 
-  private cube: THREE.Mesh;
   private terrain: Terrain;
 
   constructor() {
@@ -27,22 +26,13 @@ export class Scene {
 
     this.controls = new MapControls(this.camera, this.renderer.domElement);
 
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    this.cube = new THREE.Mesh(geometry, material);
-    this.scene.add(this.cube);
-
     this.terrain = new Terrain();
-    this.scene.add(this.terrain);
 
     window.addEventListener('resize', this.handleResize.bind(this), false);
   }
 
   render() {
     requestAnimationFrame(this.render.bind(this));
-
-    this.cube.rotation.x += 0.01;
-    this.cube.rotation.y += 0.01;
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
