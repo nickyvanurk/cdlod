@@ -27,6 +27,7 @@ export class Scene {
     this.controls = new MapControls(this.camera, this.renderer.domElement);
 
     this.terrain = new Terrain();
+    this.scene.add(this.terrain);
 
     window.addEventListener('resize', this.handleResize.bind(this), false);
   }
