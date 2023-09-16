@@ -20,7 +20,45 @@ export class Terrain extends Group {
       lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
     }
 
-    const geometry = new PlaneGeometry(2048, 2048, 128, 128);
+    const tileSize = 2048;
+    const segments = 128;
+
+    const verts = [];
+    const indices = [];
+    const uvs = [];
+    for (let y = 0; y < segments + 1; y++) {
+      for (let x = 0; x < segments + 1; x++) {
+        verts.push(-tileSize / 2 + (x * tileSize) / segments, -tileSize / 2 + (y * tileSize) / segments, 0);
+        uvs.push(x / (segments + 1), y / (segments + 1));
+
+        if (y > 0 && x > 0) {
+          const prevrow = (y - 1) * (segments + 1);
+          const thisrow = y * (segments + 1);
+
+          if (Math.floor(y + x) % 2 === 0) {
+            indices.push(prevrow + x - 1);
+            indices.push(prevrow + x);
+            indices.push(thisrow + x);
+            indices.push(prevrow + x - 1);
+            indices.push(thisrow + x);
+            indices.push(thisrow + x - 1);
+          } else {
+            indices.push(prevrow + x - 1);
+            indices.push(prevrow + x);
+            indices.push(thisrow + x - 1);
+            indices.push(prevrow + x);
+            indices.push(thisrow + x);
+            indices.push(thisrow + x - 1);
+          }
+        }
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+
     const material = new MeshBasicMaterial({ color: 0xffffff, wireframe: true });
     const plane = new Mesh(geometry, material);
     this.add(plane);
