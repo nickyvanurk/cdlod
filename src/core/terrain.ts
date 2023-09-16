@@ -62,8 +62,27 @@ export class Terrain extends THREE.Group {
     const plane = new THREE.Mesh(geometry, material);
     this.add(plane);
 
-    const heightmapUrl =
-      'https://service.pdok.nl/rws/ahn/wms/v1_0?SERVICE=WMS&request=GetMap&version=1.3.0&Layers=dtm_05m&styles=default&crs=EPSG:28992&bbox=-285401.92,22598.08,595401.92,903401.92&width=129&height=129&format=image/jpeg';
+    const bbox = [-285401.92, 22598.08, 595401.92, 903401.9];
+    const width = bbox[2] - bbox[0];
+    const height = bbox[3] - bbox[1];
+    const center = [150000, 450000]; // todo...zoom in on center
+    const zoom = 1;
+
+    for (let i = 0; i < bbox.length; i++) {
+      bbox[i] /= zoom;
+    }
+
+    if (zoom > 1) {
+      const halfWidth = width / 3 / 2;
+      bbox[0] += halfWidth;
+      bbox[2] += halfWidth;
+
+      const halfHeight = height / 1 / 2;
+      bbox[1] += halfHeight;
+      bbox[3] += halfHeight;
+    }
+
+    const heightmapUrl = `https://service.pdok.nl/rws/ahn/wms/v1_0?SERVICE=WMS&request=GetMap&version=1.3.0&Layers=dtm_05m&styles=default&crs=EPSG:28992&bbox=${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]}&width=129&height=129&format=image/jpeg`;
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = 'Anonymous';
     textureLoader.load(heightmapUrl, (tex) => {
@@ -89,7 +108,7 @@ export class Terrain extends THREE.Group {
             const height = heightFactor * scale;
 
             if (heightFactor > 0) {
-              const idx = (segments + 1 - y) * (segments + 1) * 3 + x * 3;
+              const idx = (segments - y) * (segments + 1) * 3 + x * 3;
               plane.geometry.attributes.position.array[idx + 2] = height;
             }
 
