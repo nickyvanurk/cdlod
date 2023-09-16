@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import '@ui/style.css';
 
-import { QuadTree } from './quad_tree';
+import { Terrain } from './terrain';
 
 export class Scene {
   private renderer: THREE.WebGLRenderer;
@@ -12,10 +12,11 @@ export class Scene {
   private controls: OrbitControls;
 
   private cube: THREE.Mesh;
-  private tree: QuadTree;
+  private terrain: Terrain;
 
   constructor() {
     this.renderer = new THREE.WebGLRenderer();
+
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
 
@@ -30,7 +31,7 @@ export class Scene {
     this.cube = new THREE.Mesh(geometry, material);
     this.scene.add(this.cube);
 
-    this.tree = new QuadTree();
+    this.terrain = new Terrain();
 
     window.addEventListener('resize', this.handleResize.bind(this), false);
   }
