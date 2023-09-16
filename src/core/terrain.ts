@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import { Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 
 import { QuadTree } from './quad_tree';
 
-export class Terrain extends Group {
+export class Terrain extends THREE.Group {
   private tree: QuadTree;
 
   constructor() {
@@ -29,7 +28,7 @@ export class Terrain extends Group {
     for (let y = 0; y < segments + 1; y++) {
       for (let x = 0; x < segments + 1; x++) {
         verts.push(-tileSize / 2 + (x * tileSize) / segments, -tileSize / 2 + (y * tileSize) / segments, 0);
-        uvs.push(x / (segments + 1), y / (segments + 1));
+        uvs.push(x / (segments + 1), y / (segments + 1)); // heightmap image size
 
         if (y > 0 && x > 0) {
           const prevrow = (y - 1) * (segments + 1);
@@ -59,8 +58,8 @@ export class Terrain extends Group {
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
 
-    const material = new MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-    const plane = new Mesh(geometry, material);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
+    const plane = new THREE.Mesh(geometry, material);
     this.add(plane);
 
     const heightmapUrl =
@@ -68,25 +67,40 @@ export class Terrain extends Group {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = 'Anonymous';
     textureLoader.load(heightmapUrl, (tex) => {
+      tex.minFilter = THREE.NearestFilter;
+      tex.magFilter = THREE.NearestFilter;
+
       plane.material.map = tex;
       plane.material.needsUpdate = true;
 
       const canvas = document.getElementById('canvas') as HTMLCanvasElement;
       const ctx = canvas!.getContext('2d')!;
-      canvas.width = 129;
-      canvas.height = 129;
+      canvas.width = segments + 1;
+      canvas.height = segments + 1;
       ctx.drawImage(tex.source.data, 0, 0);
 
-      for (let y = 0; y < 129; y++) {
-        const v = [];
-        for (let x = 0; x < 129; x++) {
+      const colors = [];
+      for (let y = 0; y < segments + 1; y++) {
+        for (let x = 0; x < segments + 1; x++) {
           const pixel = ctx.getImageData(x, y, 1, 1).data; // rgba
           if (pixel[0] !== 255 || pixel[1] !== 255 || pixel[2] !== 255) {
-            v.push(pixel);
+            const scale = 50;
+            const heightFactor = 1 - pixel[2] / 255;
+            const height = heightFactor * scale;
+
+            if (heightFactor > 0) {
+              const idx = (segments + 1 - y) * (segments + 1) * 3 + x * 3;
+              plane.geometry.attributes.position.array[idx + 2] = height;
+            }
+
+            colors.push(pixel[0], pixel[1], pixel[2]);
+          } else {
+            colors.push(255, 0, 0);
           }
         }
-        console.log(v);
       }
+
+      plane.geometry.attributes.position.needsUpdate = true;
     });
 
     console.log('New terrain');
