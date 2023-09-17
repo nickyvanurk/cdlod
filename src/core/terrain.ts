@@ -7,9 +7,16 @@ export class Terrain extends THREE.Group {
     super();
     this.rotateX(-Math.PI / 2);
 
+    const segments = 128;
+
     const tree = new QuadTree(0, 0, 2048);
     tree.traverse((node) => {
-      console.log(node);
+      const mesh = generateQuadMesh(node.size, segments);
+      // mesh.position.z = -200 - node.level * 200;
+      mesh.position.x = node.x + node.size / 2 - 1024;
+      mesh.position.y = node.y + node.size / 2 - 1024;
+      mesh.visible = false;
+      this.add(mesh);
     });
 
     const minLodDistance = 15;
@@ -20,47 +27,7 @@ export class Terrain extends THREE.Group {
       lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
     }
 
-    const tileSize = 2048;
-    const segments = 128;
-
-    const verts = [];
-    const indices = [];
-    const uvs = [];
-    for (let y = 0; y < segments + 1; y++) {
-      for (let x = 0; x < segments + 1; x++) {
-        verts.push(-tileSize / 2 + (x * tileSize) / segments, -tileSize / 2 + (y * tileSize) / segments, 0);
-        uvs.push(x / (segments + 1), y / (segments + 1)); // heightmap image size
-
-        if (y > 0 && x > 0) {
-          const prevrow = (y - 1) * (segments + 1);
-          const thisrow = y * (segments + 1);
-
-          if (Math.floor(y + x) % 2 === 0) {
-            indices.push(prevrow + x - 1);
-            indices.push(prevrow + x);
-            indices.push(thisrow + x);
-            indices.push(prevrow + x - 1);
-            indices.push(thisrow + x);
-            indices.push(thisrow + x - 1);
-          } else {
-            indices.push(prevrow + x - 1);
-            indices.push(prevrow + x);
-            indices.push(thisrow + x - 1);
-            indices.push(prevrow + x);
-            indices.push(thisrow + x);
-            indices.push(thisrow + x - 1);
-          }
-        }
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setIndex(indices);
-
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-    const plane = new THREE.Mesh(geometry, material);
+    const plane = generateQuadMesh(2048, 128);
     this.add(plane);
 
     const bbox = [-285401.92, 22598.08, 595401.92, 903401.9];
@@ -122,7 +89,47 @@ export class Terrain extends THREE.Group {
 
       plane.geometry.attributes.position.needsUpdate = true;
     });
-
-    console.log('New terrain');
   }
+}
+
+function generateQuadMesh(size: number, segments: number) {
+  const verts = [];
+  const indices = [];
+  const uvs = [];
+  for (let y = 0; y < segments + 1; y++) {
+    for (let x = 0; x < segments + 1; x++) {
+      verts.push(-size / 2 + (x * size) / segments, -size / 2 + (y * size) / segments, 0);
+      uvs.push(x / (segments + 1), y / (segments + 1)); // heightmap image size
+
+      if (y > 0 && x > 0) {
+        const prevrow = (y - 1) * (segments + 1);
+        const thisrow = y * (segments + 1);
+
+        if (Math.floor(y + x) % 2 === 0) {
+          indices.push(prevrow + x - 1);
+          indices.push(prevrow + x);
+          indices.push(thisrow + x);
+          indices.push(prevrow + x - 1);
+          indices.push(thisrow + x);
+          indices.push(thisrow + x - 1);
+        } else {
+          indices.push(prevrow + x - 1);
+          indices.push(prevrow + x);
+          indices.push(thisrow + x - 1);
+          indices.push(prevrow + x);
+          indices.push(thisrow + x);
+          indices.push(thisrow + x - 1);
+        }
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
+
+  return new THREE.Mesh(geometry, material);
 }
