@@ -35,6 +35,8 @@ export class Scene {
   render() {
     requestAnimationFrame(this.render.bind(this));
 
+    this.terrain.update(this.camera.position);
+
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }

@@ -3,31 +3,31 @@ import * as THREE from 'three';
 import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
+  private lodRanges: number[] = [];
+
   constructor() {
     super();
-    this.rotateX(-Math.PI / 2);
 
     const segments = 128;
 
     const tree = new QuadTree(0, 0, 2048);
     tree.traverse((node) => {
       const mesh = generateQuadMesh(node.size, segments);
-      // mesh.position.z = -200 - node.level * 200;
       mesh.position.x = node.x + node.size / 2 - 1024;
-      mesh.position.y = node.y + node.size / 2 - 1024;
+      mesh.position.z = node.y + node.size / 2 - 1024;
       mesh.visible = false;
+      mesh.userData = node;
       this.add(mesh);
     });
 
-    const minLodDistance = 15;
+    const minLodDistance = 60;
     const lodLevels = 6;
-    const lodRanges = [];
-
     for (let i = 0; i < lodLevels; i++) {
-      lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
+      this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
     }
 
     const plane = generateQuadMesh(2048, 128);
+    plane.userData.level = 0;
     this.add(plane);
 
     const bbox = [-285401.92, 22598.08, 595401.92, 903401.9];
@@ -76,8 +76,8 @@ export class Terrain extends THREE.Group {
             const height = heightFactor * scale;
 
             if (heightFactor > 0) {
-              const idx = (segments - y) * (segments + 1) * 3 + x * 3;
-              plane.geometry.attributes.position.array[idx + 2] = height;
+              const idx = y * (segments + 1) * 3 + x * 3;
+              plane.geometry.attributes.position.array[idx + 1] = height;
             }
 
             colors.push(pixel[0], pixel[1], pixel[2]);
@@ -90,6 +90,26 @@ export class Terrain extends THREE.Group {
       plane.geometry.attributes.position.needsUpdate = true;
     });
   }
+
+  update(eye: THREE.Vector3) {
+    for (const mesh of this.children) {
+      const aabb = (mesh as THREE.Mesh).geometry.boundingBox!.clone();
+      aabb.min.x += mesh.position.x;
+      aabb.min.z += mesh.position.z;
+      aabb.max.x += mesh.position.x;
+      aabb.max.z += mesh.position.z;
+
+      if (aabb.intersectsSphere(new THREE.Sphere(eye, this.lodRanges[mesh.userData.level]))) {
+        mesh.visible = true;
+      } else {
+        if (mesh.userData.level === 0) {
+          mesh.visible = true;
+        } else {
+          mesh.visible = false;
+        }
+      }
+    }
+  }
 }
 
 function generateQuadMesh(size: number, segments: number) {
@@ -98,8 +118,8 @@ function generateQuadMesh(size: number, segments: number) {
   const uvs = [];
   for (let y = 0; y < segments + 1; y++) {
     for (let x = 0; x < segments + 1; x++) {
-      verts.push(-size / 2 + (x * size) / segments, -size / 2 + (y * size) / segments, 0);
-      uvs.push(x / (segments + 1), y / (segments + 1)); // heightmap image size
+      verts.push(-size / 2 + (x * size) / segments, 0, -size / 2 + (y * size) / segments);
+      uvs.push(x / (segments + 1), 1 - y / (segments + 1)); // heightmap image size
 
       if (y > 0 && x > 0) {
         const prevrow = (y - 1) * (segments + 1);
@@ -128,6 +148,7 @@ function generateQuadMesh(size: number, segments: number) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
+  geometry.computeBoundingBox();
 
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
 
