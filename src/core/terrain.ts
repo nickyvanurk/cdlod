@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 
-import { QuadTree } from './quad_tree';
+import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
-  private tree: QuadTree;
-
   constructor() {
     super();
     this.rotateX(-Math.PI / 2);
 
-    this.tree = new QuadTree();
+    const tree = new QuadTree(0, 0, 2048);
+    tree.traverse((node) => {
+      console.log(node);
+    });
 
     const minLodDistance = 15;
     const lodLevels = 6;
