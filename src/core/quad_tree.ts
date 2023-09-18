@@ -12,7 +12,7 @@ export class Node {
     public size: number,
     public level = 0
   ) {
-    if (level < 2) {
+    if (level < 4) {
       const subSize = size / 2;
       this.subTL = new Node(x, y, subSize, level + 1);
       this.subTR = new Node(x + subSize, y, subSize, level + 1);

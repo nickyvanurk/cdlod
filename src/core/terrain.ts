@@ -22,10 +22,10 @@ export class Terrain extends THREE.Group {
       this.add(mesh);
     });
 
-    const minLodDistance = 1024;
-    const lodLevels = 2;
+    const minLodDistance = 128;
+    const lodLevels = 4;
     for (let i = 0; i <= lodLevels; i++) {
-      this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
+      this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - i);
     }
 
     const plane = generateQuadMesh(2048, 128);
@@ -95,12 +95,24 @@ export class Terrain extends THREE.Group {
 
   update(eye: THREE.Vector3) {
     const selectedNodes: QuadTree[] = [];
-    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 2, (node) => {
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, (node) => {
       selectedNodes.push(node);
     });
 
     for (const mesh of this.children) {
       mesh.visible = selectedNodes.includes(mesh.userData as QuadTree);
+
+      for (const node of selectedNodes) {
+        if (node === (mesh.userData as QuadTree)) {
+          let color = 0x33f55f;
+          if (node.level === 1) color = 0xbefc26;
+          if (node.level === 2) color = 0xe6c12f;
+          if (node.level === 3) color = 0xfc8e26;
+          if (node.level === 4) color = 0xf23424;
+
+          ((mesh as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(color);
+        }
+      }
     }
   }
 }
