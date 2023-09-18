@@ -4,14 +4,16 @@ import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
   private lodRanges: number[] = [];
+  private tree: QuadTree;
 
   constructor() {
     super();
 
     const segments = 128;
 
-    const tree = new QuadTree(0, 0, 2048);
-    tree.traverse((node) => {
+    //TODO: Create QuadTree/Node with center origin
+    this.tree = new QuadTree(0, 0, 2048);
+    this.tree.traverse((node) => {
       const mesh = generateQuadMesh(node.size, segments);
       mesh.position.x = node.x + node.size / 2 - 1024;
       mesh.position.z = node.y + node.size / 2 - 1024;
@@ -20,9 +22,9 @@ export class Terrain extends THREE.Group {
       this.add(mesh);
     });
 
-    const minLodDistance = 60;
-    const lodLevels = 6;
-    for (let i = 0; i < lodLevels; i++) {
+    const minLodDistance = 1024;
+    const lodLevels = 2;
+    for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - 1 - i);
     }
 
@@ -92,22 +94,13 @@ export class Terrain extends THREE.Group {
   }
 
   update(eye: THREE.Vector3) {
-    for (const mesh of this.children) {
-      const aabb = (mesh as THREE.Mesh).geometry.boundingBox!.clone();
-      aabb.min.x += mesh.position.x;
-      aabb.min.z += mesh.position.z;
-      aabb.max.x += mesh.position.x;
-      aabb.max.z += mesh.position.z;
+    const selectedNodes: QuadTree[] = [];
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 2, (node) => {
+      selectedNodes.push(node);
+    });
 
-      if (aabb.intersectsSphere(new THREE.Sphere(eye, this.lodRanges[mesh.userData.level]))) {
-        mesh.visible = true;
-      } else {
-        if (mesh.userData.level === 0) {
-          mesh.visible = true;
-        } else {
-          mesh.visible = false;
-        }
-      }
+    for (const mesh of this.children) {
+      mesh.visible = selectedNodes.includes(mesh.userData as QuadTree);
     }
   }
 }
