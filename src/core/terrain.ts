@@ -21,6 +21,7 @@ export class Terrain extends THREE.Group {
     for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - i);
     }
+    console.log(this.lodRanges);
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
 
@@ -34,6 +35,7 @@ export class Terrain extends THREE.Group {
     const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
+        lodRanges: { value: this.lodRanges },
         colors: { value: colors },
       },
       vertexShader: gridVertexShader,
