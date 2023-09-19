@@ -19,6 +19,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
+    "types": ["vite/client", "vite-plugin-glsl/ext"],
 
     /* Paths */
     "baseUrl": ".",

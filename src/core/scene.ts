@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 
+import gridVertexShader from './grid.vs';
+
 export class Scene extends THREE.Scene {
   constructor(_camera: THREE.PerspectiveCamera) {
     super();
 
-    const maxLod = 5;
     const sectorSize = 64;
-    const maxScale = sectorSize * Math.pow(2, maxLod);
-    const geometry = new THREE.PlaneGeometry(maxScale, maxScale, sectorSize * 2, sectorSize * 2);
+    const geometry = new THREE.PlaneGeometry(2048, 2048, sectorSize * 2, sectorSize * 2);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
-    console.log(sectorSize * Math.pow(2, maxLod));
 
     const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
       },
+      vertexShader: gridVertexShader,
       wireframe: true,
     });
 
