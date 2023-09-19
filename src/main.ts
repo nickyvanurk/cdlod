@@ -1,6 +1,5 @@
-import { Scene } from '@core/scene';
+import { World } from '@core/world';
 
 import '@ui/style.css';
 
-const main = new Scene();
-main.render();
+const world = new World();

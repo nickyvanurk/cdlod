@@ -131,19 +131,21 @@ function generateQuadMesh(size: number, segments: number) {
         const thisrow = y * (segments + 1);
 
         if (Math.floor(y + x) % 2 === 0) {
-          indices.push(prevrow + x - 1);
+          indices.push(thisrow + x);
           indices.push(prevrow + x);
+          indices.push(prevrow + x - 1);
+
+          indices.push(thisrow + x - 1);
           indices.push(thisrow + x);
           indices.push(prevrow + x - 1);
-          indices.push(thisrow + x);
-          indices.push(thisrow + x - 1);
         } else {
+          indices.push(thisrow + x - 1);
+          indices.push(prevrow + x);
           indices.push(prevrow + x - 1);
-          indices.push(prevrow + x);
+
           indices.push(thisrow + x - 1);
-          indices.push(prevrow + x);
           indices.push(thisrow + x);
-          indices.push(thisrow + x - 1);
+          indices.push(prevrow + x);
         }
       }
     }
