@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import gridFragmentShader from './grid.fs';
 import gridVertexShader from './grid.vs';
 import { Node as QuadTree } from './quad_tree';
 
@@ -11,6 +12,8 @@ export class Terrain extends THREE.Group {
   constructor() {
     super();
 
+    const MAX_INSTANCES = 2000;
+
     this.tree = new QuadTree(0, 0, 1024);
 
     const minLodDistance = 128;
@@ -19,19 +22,26 @@ export class Terrain extends THREE.Group {
       this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - i);
     }
 
+    const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
+
     const sectorSize = 64;
     const geometry = new THREE.PlaneGeometry(1, 1, sectorSize * 2, sectorSize * 2);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
+    const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
+    geometry.setAttribute('lodLevel', lodLevelAttribute);
+
     const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
+        colors: { value: colors },
       },
       vertexShader: gridVertexShader,
+      fragmentShader: gridFragmentShader,
       wireframe: true,
     });
 
-    this.grid = new THREE.InstancedMesh(geometry, material, 200);
+    this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
     this.add(this.grid);
   }
@@ -42,6 +52,8 @@ export class Terrain extends THREE.Group {
       selectedNodes.push(node);
     });
 
+    const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
+
     for (const [idx, node] of selectedNodes.entries()) {
       this.grid.setMatrixAt(
         idx,
@@ -51,23 +63,12 @@ export class Terrain extends THREE.Group {
           new THREE.Vector3(node.halfSize * 2, 1, node.halfSize * 2)
         )
       );
+
+      lodLevelAttribute.set(Float32Array.from([node.level]), idx);
     }
 
+    lodLevelAttribute.needsUpdate = true;
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
-
-    // for (const mesh of this.children) {
-    //   mesh.visible = selectedNodes.includes(mesh.userData as QuadTree);
-    //   for (const node of selectedNodes) {
-    //     if (node === (mesh.userData as QuadTree)) {
-    //       let color = 0x33f55f;
-    //       if (node.level === 1) color = 0xbefc26;
-    //       if (node.level === 2) color = 0xe6c12f;
-    //       if (node.level === 3) color = 0xfc8e26;
-    //       if (node.level === 4) color = 0xf23424;
-    //       ((mesh as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(color);
-    //     }
-    //   }
-    // }
   }
 }
