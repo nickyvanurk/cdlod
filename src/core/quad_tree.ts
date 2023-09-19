@@ -9,14 +9,14 @@ export class Node {
   constructor(
     public x: number,
     public y: number,
-    public size: number,
+    public halfSize: number,
     public level = 0
   ) {
     if (level < 4) {
-      const subSize = size / 2;
-      this.subTL = new Node(x, y, subSize, level + 1);
-      this.subTR = new Node(x + subSize, y, subSize, level + 1);
-      this.subBL = new Node(x, y + subSize, subSize, level + 1);
+      const subSize = halfSize / 2;
+      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
+      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
+      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1);
       this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1);
     }
   }
@@ -32,8 +32,8 @@ export class Node {
 
   selectNodes(eye: THREE.Vector3, ranges: number[], level: number, cb: (node: Node) => void) {
     const aabb = new THREE.Box3(
-      new THREE.Vector3(this.x - 1024, 0, this.y - 1024),
-      new THREE.Vector3(this.x + this.size - 1024, 0, this.y + this.size - 1024)
+      new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
+      new THREE.Vector3(this.x + this.halfSize, 0, this.y + this.halfSize)
     );
 
     // check biggest range first, is this correct?
@@ -51,19 +51,27 @@ export class Node {
         cb(this);
       } else {
         if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, cb)) {
-          cb(this.subTL); // smaller lod patch is in bigger lod range. Fix this?
+          this.subTL.level--;
+          cb(this.subTL);
+          this.subTL.level++;
         }
 
         if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, cb)) {
-          cb(this.subTR); // smaller lod patch is in bigger lod range. Fix this?
+          this.subTR.level--;
+          cb(this.subTR);
+          this.subTR.level++;
         }
 
         if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, cb)) {
-          cb(this.subBL); // smaller lod patch is in bigger lod range. Fix this?
+          this.subBL.level--;
+          cb(this.subBL);
+          this.subBL.level++;
         }
 
         if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, cb)) {
-          cb(this.subBR); // smaller lod patch is in bigger lod range. Fix this?
+          this.subBR.level--;
+          cb(this.subBR);
+          this.subBR.level++;
         }
       }
     }
