@@ -49,24 +49,24 @@ export class Terrain extends THREE.Group {
   }
 
   update(eye: THREE.Vector3) {
-    const selectedNodes: QuadTree[] = [];
-    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, (node) => {
-      selectedNodes.push(node);
-    });
-
     const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
 
-    for (const [idx, node] of selectedNodes.entries()) {
+    const selectedNodes: { node: QuadTree; level: number }[] = [];
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, (node, level) => {
+      selectedNodes.push({ node, level });
+    });
+
+    for (const [idx, obj] of selectedNodes.entries()) {
       this.grid.setMatrixAt(
         idx,
         new THREE.Matrix4().compose(
-          new THREE.Vector3(node.x, 0, node.y),
+          new THREE.Vector3(obj.node.x, 0, obj.node.y),
           new THREE.Quaternion(),
-          new THREE.Vector3(node.halfSize * 2, 1, node.halfSize * 2)
+          new THREE.Vector3(obj.node.halfSize * 2, 1, obj.node.halfSize * 2)
         )
       );
 
-      lodLevelAttribute.set(Float32Array.from([node.level]), idx);
+      lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
     }
 
     lodLevelAttribute.needsUpdate = true;

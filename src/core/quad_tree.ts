@@ -30,7 +30,7 @@ export class Node {
     this.subBR?.traverse(cb);
   }
 
-  selectNodes(eye: THREE.Vector3, ranges: number[], level: number, cb: (node: Node) => void) {
+  selectNodes(eye: THREE.Vector3, ranges: number[], level: number, cb: (node: Node, level: number) => void) {
     const aabb = new THREE.Box3(
       new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
       new THREE.Vector3(this.x + this.halfSize, 0, this.y + this.halfSize)
@@ -44,34 +44,26 @@ export class Node {
 
     if (level === 0) {
       // we are at the most detailed level
-      cb(this);
+      cb(this, this.level);
       return true;
     } else {
       if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level - 1]))) {
-        cb(this);
+        cb(this, this.level);
       } else {
         if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, cb)) {
-          this.subTL.level--;
-          cb(this.subTL);
-          this.subTL.level++;
+          cb(this.subTL, this.level);
         }
 
         if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, cb)) {
-          this.subTR.level--;
-          cb(this.subTR);
-          this.subTR.level++;
+          cb(this.subTR, this.level);
         }
 
         if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, cb)) {
-          this.subBL.level--;
-          cb(this.subBL);
-          this.subBL.level++;
+          cb(this.subBL, this.level);
         }
 
         if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, cb)) {
-          this.subBR.level--;
-          cb(this.subBR);
-          this.subBR.level++;
+          cb(this.subBR, this.level);
         }
       }
     }
