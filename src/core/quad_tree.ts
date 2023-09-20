@@ -12,7 +12,7 @@ export class Node {
     public halfSize: number,
     public level = 0
   ) {
-    if (level < 4) {
+    if (level < 5) {
       const subSize = halfSize / 2;
       this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
       this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
@@ -44,12 +44,27 @@ export class Node {
 
     if (level === 0) {
       // we are at the most detailed level
-      cb(this, this.level);
+      // four 1/2 resolution nodes form one whole node. it's needed for when when we need to
+      // only add a part of a node.
+      if (this.subTL && this.subTR && this.subBL && this.subBR) {
+        cb(this.subTL, this.level);
+        cb(this.subTR, this.level);
+        cb(this.subBL, this.level);
+        cb(this.subBR, this.level);
+      }
       return true;
     } else {
       if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level - 1]))) {
-        cb(this, this.level);
+        if (this.subTL && this.subTR && this.subBL && this.subBR) {
+          cb(this.subTL, this.level);
+          cb(this.subTR, this.level);
+          cb(this.subBL, this.level);
+          cb(this.subBR, this.level);
+        }
       } else {
+        // add only a part of the node. again, children can be either part of this node or
+        // a child node, depending on the level. all nodes are 1/2 resolution. so the root
+        // node exists as four 1/2 resolution nodes, the same goes for all other nodes.
         if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, cb)) {
           cb(this.subTL, this.level);
         }

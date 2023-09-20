@@ -18,7 +18,7 @@ float morphValue(float dist) {
 }
 
 vec2 morphVertex(vec2 vertex, vec2 mesh_pos, float morphValue) {
-  vec2 gridDim = vec2(sectorSize * 2.0, sectorSize * 2.0);
+  vec2 gridDim = vec2(sectorSize, sectorSize);
   vec2 fraction = fract(mesh_pos * gridDim * 0.5) * 2.0 / gridDim;
   return vertex - fraction * morphValue;
 }

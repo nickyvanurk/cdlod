@@ -19,14 +19,14 @@ export class Terrain extends THREE.Group {
     const minLodDistance = 128;
     const lodLevels = 4;
     for (let i = 0; i <= lodLevels; i++) {
-      this.lodRanges[i] = minLodDistance * Math.pow(2, lodLevels - i);
+      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
     }
     console.log(this.lodRanges);
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
 
     const sectorSize = 64;
-    const geometry = new THREE.PlaneGeometry(1, 1, sectorSize * 2, sectorSize * 2);
+    const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
