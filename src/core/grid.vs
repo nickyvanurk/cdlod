@@ -1,7 +1,7 @@
-precision mediump float;
 
 uniform float sectorSize;
 uniform float lodRanges[5];
+uniform sampler2D heightmap;
 
 attribute float lodLevel;
 
@@ -31,9 +31,11 @@ void main() {
 
   float dist = length(cameraPosition - worldPos);
   float morphK = morphValue(dist);
-  vec2 morphedPos = morphVertex(position.xz, uv.xy, morphK);
+  vec2 morphedPos = morphVertex(position.xz, uv, morphK);
 
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
+
+  morphedWorldPos.y = (texture2D(heightmap, (morphedWorldPos.xz + 1024.0) / 2048.0).r) * 100.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }

@@ -32,11 +32,14 @@ export class Terrain extends THREE.Group {
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
     geometry.setAttribute('lodLevel', lodLevelAttribute);
 
+    const textureLoader = new THREE.TextureLoader();
+
     const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
+        heightmap: { value: textureLoader.load('./src/core/heightmap.png') },
       },
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
