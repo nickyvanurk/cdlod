@@ -30,7 +30,13 @@ export class Node {
     this.subBR?.traverse(cb);
   }
 
-  selectNodes(eye: THREE.Vector3, ranges: number[], level: number, cb: (node: Node, level: number) => void) {
+  selectNodes(
+    eye: THREE.Vector3,
+    ranges: number[],
+    level: number,
+    frustum: THREE.Frustum,
+    cb: (node: Node, level: number) => void
+  ) {
     const aabb = new THREE.Box3(
       new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
       new THREE.Vector3(this.x + this.halfSize, 0, this.y + this.halfSize)
@@ -40,6 +46,12 @@ export class Node {
     if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level]))) {
       // no node or child nodes were selected; return false so that our parent node handles our area.
       return false;
+    }
+
+    if (!frustum.intersectsBox(aabb)) {
+      // we are out of frustum, select nothing but return true to mark this node as having been
+      // correctly handled so that our parent node does not select itself over our area.
+      return true;
     }
 
     if (level === 0) {
@@ -65,19 +77,19 @@ export class Node {
         // add only a part of the node. again, children can be either part of this node or
         // a child node, depending on the level. all nodes are 1/2 resolution. so the root
         // node exists as four 1/2 resolution nodes, the same goes for all other nodes.
-        if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, cb)) {
+        if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
           cb(this.subTL, this.level);
         }
 
-        if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, cb)) {
+        if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
           cb(this.subTR, this.level);
         }
 
-        if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, cb)) {
+        if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
           cb(this.subBL, this.level);
         }
 
-        if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, cb)) {
+        if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
           cb(this.subBR, this.level);
         }
       }
