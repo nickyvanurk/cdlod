@@ -40,6 +40,7 @@ export class Terrain extends THREE.Group {
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
         heightmap: { value: textureLoader.load('./src/core/heightmap.png') },
+        enableLodColors: { value: false },
       },
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
@@ -47,7 +48,14 @@ export class Terrain extends THREE.Group {
     };
     const material = new THREE.ShaderMaterial(shaderConfig);
 
-    gui.add(shaderConfig, 'wireframe').onChange((visible: boolean) => (material.wireframe = visible));
+    gui
+      .add(shaderConfig, 'wireframe')
+      .name('Wireframe')
+      .onChange((visible: boolean) => (material.wireframe = visible));
+    gui
+      .add(shaderConfig.uniforms.enableLodColors, 'value')
+      .name('LOD Colors')
+      .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
 
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
