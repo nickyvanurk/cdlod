@@ -1,3 +1,4 @@
+import type GUI from 'lil-gui';
 import * as THREE from 'three';
 
 import gridFragmentShader from './grid.fs';
@@ -9,7 +10,7 @@ export class Terrain extends THREE.Group {
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
 
-  constructor() {
+  constructor(gui: GUI) {
     super();
 
     const MAX_INSTANCES = 2000;
@@ -21,7 +22,6 @@ export class Terrain extends THREE.Group {
     for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
     }
-    console.log(this.lodRanges);
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
 
@@ -34,7 +34,7 @@ export class Terrain extends THREE.Group {
 
     const textureLoader = new THREE.TextureLoader();
 
-    const material = new THREE.ShaderMaterial({
+    const shaderConfig = {
       uniforms: {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
@@ -44,7 +44,10 @@ export class Terrain extends THREE.Group {
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
       wireframe: false,
-    });
+    };
+    const material = new THREE.ShaderMaterial(shaderConfig);
+
+    gui.add(shaderConfig, 'wireframe').onChange((visible: boolean) => (material.wireframe = visible));
 
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
