@@ -49,8 +49,6 @@ export class Terrain extends THREE.Group {
       THREE.UnsignedByteType
     );
 
-    const textureLoader = new THREE.TextureLoader();
-
     // node description buffer
 
     const shaderConfig = {
@@ -58,7 +56,6 @@ export class Terrain extends THREE.Group {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
-        heightmap: { value: textureLoader.load('./src/core/heightmap.png') },
         enableLodColors: { value: false },
         atlas: { value: atlas },
       },

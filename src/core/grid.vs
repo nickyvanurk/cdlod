@@ -9,7 +9,7 @@ uniform sampler2D atlas;
 attribute float lodLevel;
 
 flat varying int vLodLevel;
-flat varying vec2 vUv;
+flat varying float vHeightScale;
 
 float morphValue(float dist) {
   float low = 0.0;
@@ -39,9 +39,8 @@ void main() {
 
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
 
-  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + (4096.0 * 2.0)) / (4096.0 * 4.0);
-
   morphedWorldPos.y = (texture2D(atlas, (vec2(morphedWorldPos.x, morphedWorldPos.z) + 4096.0) / (4096.0 * 2.0)).r) * 800.0;
+  vHeightScale = morphedWorldPos.y / 800.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }
