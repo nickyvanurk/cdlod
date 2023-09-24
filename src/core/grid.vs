@@ -1,4 +1,6 @@
 
+precision mediump float;
+
 uniform float sectorSize;
 uniform float lodRanges[5];
 uniform sampler2D heightmap;
@@ -6,6 +8,7 @@ uniform sampler2D heightmap;
 attribute float lodLevel;
 
 flat varying int vLodLevel;
+flat varying vec2 vUv;
 
 float morphValue(float dist) {
   float low = 0.0;
@@ -35,7 +38,9 @@ void main() {
 
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
 
-  morphedWorldPos.y = (texture2D(heightmap, (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 1024.0) / 2048.0).r) * 100.0;
+  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 1024.0) / 2048.0;
+
+  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * 100.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }

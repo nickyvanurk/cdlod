@@ -43,7 +43,7 @@ export class Terrain extends THREE.Group {
       },
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
-      wireframe: true,
+      wireframe: false,
     });
 
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
