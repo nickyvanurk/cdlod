@@ -1,5 +1,5 @@
 
-precision mediump float;
+precision highp float;
 
 uniform float sectorSize;
 uniform float lodRanges[5];

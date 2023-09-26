@@ -13,11 +13,13 @@ export class Terrain extends THREE.Group {
   constructor(gui: GUI) {
     super();
 
+    const tileSize = 128;
+
     const MAX_INSTANCES = 2000;
 
     this.tree = new QuadTree(0, 0, 4096);
 
-    const minLodDistance = 128;
+    const minLodDistance = tileSize * 2;
     const lodLevels = 4;
     for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
@@ -29,10 +31,9 @@ export class Terrain extends THREE.Group {
 
     //TODO: Generate normals for lighting
 
-    const sectorSize = 128;
     //TODO: Create custom grid to fit new 256x256 data source (1/2 vertex on right and bottom for each quarter).
     // and generate it using the better pattern.
-    const geometry = new THREE.PlaneGeometry(1, 1, 128, 128);
+    const geometry = new THREE.PlaneGeometry(1, 1, tileSize - 1, tileSize - 1);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
@@ -43,8 +44,8 @@ export class Terrain extends THREE.Group {
 
     const atlas: THREE.DataTexture = new THREE.DataTexture(
       new Uint8Array(4 * 256 * 256),
-      512,
-      512,
+      256,
+      256,
       THREE.RGBAFormat,
       THREE.UnsignedByteType
     );
@@ -53,7 +54,7 @@ export class Terrain extends THREE.Group {
 
     const shaderConfig = {
       uniforms: {
-        sectorSize: { value: sectorSize },
+        sectorSize: { value: tileSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
         enableLodColors: { value: false },
@@ -61,7 +62,7 @@ export class Terrain extends THREE.Group {
       },
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
-      wireframe: false,
+      wireframe: true,
     };
     const material = new THREE.ShaderMaterial(shaderConfig);
 
