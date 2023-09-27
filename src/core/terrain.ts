@@ -10,7 +10,6 @@ export class Terrain extends THREE.Group {
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
   private material: THREE.ShaderMaterial;
-  private fileLoader: THREE.FileLoader;
   private maxTextures = 500; // TODO: shared with worker, refactor
   private lodLevels = 8;
 
@@ -19,22 +18,6 @@ export class Terrain extends THREE.Group {
 
   constructor(gui: GUI) {
     super();
-
-    this.worker = new Worker('./src/core/worker.ts', { type: 'module' });
-    this.worker.onmessage = (ev) => {
-      for (const nodeData of ev.data) {
-        const { level, x, y, texId } = nodeData;
-
-        this.tree.traverse((node) => {
-          if (node.level === level && node.x === x && node.y === y) {
-            node.texId = texId;
-            node.state = State.loaded;
-          }
-        });
-      }
-
-      this.material.uniforms.atlas.value.needsUpdate = true;
-    };
 
     const buffer = new SharedArrayBuffer(256 * 256 * 4 * this.maxTextures);
     this.textureBuffer = new Uint8Array(buffer);
@@ -45,34 +28,8 @@ export class Terrain extends THREE.Group {
 
     this.tree = new QuadTree(0, 0, 4096, 0, 0);
 
-    const minLodDistance = 32;
-    for (let i = 0; i <= this.lodLevels; i++) {
-      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + this.lodLevels - i);
-    }
-    this.lodRanges[0] *= 2;
-    console.log(this.lodRanges);
-
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
-
-    //TODO: Generate normals for lighting
-
-    //TODO: Create custom grid to fit new 256x256 data source (1/2 vertex on right and bottom for each quarter).
-    // and generate it using the better pattern.
-    const geometry = new THREE.PlaneGeometry(1, 1, tileSize - 1, tileSize - 1);
-    geometry.rotateX(-Math.PI / 2); // flip to xz plane
-
-    const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
-    geometry.setAttribute('lodLevel', lodLevelAttribute);
-
-    const texIdAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
-    geometry.setAttribute('texId', texIdAttribute);
-
-    this.fileLoader = new THREE.FileLoader();
-    this.fileLoader.setResponseType('arraybuffer');
-
     const atlas = new THREE.DataArrayTexture(this.textureBuffer, 256, 256, this.maxTextures);
-
-    // node description buffer
 
     const shaderConfig = {
       uniforms: {
@@ -87,6 +44,49 @@ export class Terrain extends THREE.Group {
       wireframe: true,
     };
     this.material = new THREE.ShaderMaterial(shaderConfig);
+
+    const queue: { level: number; x: number; y: number; texId: number }[] = [];
+
+    this.worker = new Worker('./src/core/worker.ts', { type: 'module' });
+    this.worker.onmessage = (ev) => queue.push(...ev.data);
+    setInterval(() => {
+      if (queue.length > 0) {
+        this.tree.traverse((node) => {
+          for (const msg of queue) {
+            if (node.level === msg.level && node.x === msg.x && node.y === msg.y) {
+              node.texId = msg.texId;
+              node.state = State.loaded;
+            }
+          }
+        });
+
+        this.material.uniforms.atlas.value.needsUpdate = true;
+
+        queue.length = 0;
+      }
+    }, 500);
+
+    const minLodDistance = 32;
+    for (let i = 0; i <= this.lodLevels; i++) {
+      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + this.lodLevels - i);
+    }
+    this.lodRanges[0] *= 2;
+    console.log(this.lodRanges);
+
+    //TODO: Generate normals for lighting
+
+    //TODO: Create custom grid to fit new 256x256 data source (1/2 vertex on right and bottom for each quarter).
+    // and generate it using the better pattern.
+    const geometry = new THREE.PlaneGeometry(1, 1, tileSize - 1, tileSize - 1);
+    geometry.rotateX(-Math.PI / 2); // flip to xz plane
+
+    const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
+    geometry.setAttribute('lodLevel', lodLevelAttribute);
+
+    const texIdAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
+    geometry.setAttribute('texId', texIdAttribute);
+
+    // node description buffer
 
     this.worker.postMessage([{ level: 0, x: 0, y: 0, buffer: this.textureBuffer }]);
 

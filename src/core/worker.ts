@@ -9,8 +9,6 @@ fileLoader.setResponseType('arraybuffer');
 self.addEventListener('message', async (ev) => {
   const result = [];
 
-  // const data = ev.data as { level: number; x: number; y: number; buffer: Uint8Array }[];
-  // console.log(data);
   for (const nodeData of ev.data) {
     const { level, x, y, buffer } = nodeData;
 
