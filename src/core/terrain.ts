@@ -14,6 +14,7 @@ export class Terrain extends THREE.Group {
   private textureBuffer: Uint8Array;
   private textureIdx = 0;
   private maxTextures = 500;
+  private lodLevels = 8;
 
   constructor(gui: GUI) {
     super();
@@ -24,10 +25,9 @@ export class Terrain extends THREE.Group {
 
     this.tree = new QuadTree(0, 0, 4096, 0, 0);
 
-    const minLodDistance = 128 * 6;
-    const lodLevels = 4;
-    for (let i = 0; i <= lodLevels; i++) {
-      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
+    const minLodDistance = 128;
+    for (let i = 0; i <= this.lodLevels; i++) {
+      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + this.lodLevels - i);
     }
     this.lodRanges[0] *= 8;
     console.log(this.lodRanges);
@@ -91,7 +91,7 @@ export class Terrain extends THREE.Group {
     const texIdAttribute = this.grid.geometry.getAttribute('texId') as THREE.InstancedBufferAttribute;
 
     const selectedNodes: { node: QuadTree; level: number; loadChildren: boolean }[] = [];
-    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, frustum, (node, level, loadChildren) => {
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), this.lodLevels, frustum, (node, level, loadChildren) => {
       selectedNodes.push({ node, level, loadChildren });
 
       if (loadChildren) {
@@ -107,7 +107,6 @@ export class Terrain extends THREE.Group {
             const tileIdx = calcZOrderCurveValue(tileX, tileY);
 
             this.loadTile(this.fileLoader, child.level, tileIdx, this.textureBuffer, (texIdx) => {
-              console.log(child, tileIdx, texIdx);
               child.state = State.loaded;
               child.texId = texIdx;
             });
@@ -165,7 +164,6 @@ function loadTileFromFile(
 ) {
   return new Promise((resolve) => {
     const idxInHex = tileIdx.toString(16).toUpperCase().padStart(8, '0');
-    console.log(`./src/assets/terrain/5${level}${idxInHex}.hght`);
     fileLoader.load(`./src/assets/terrain/5${level}${idxInHex}.hght`, (data) => {
       const dataBuffer = new Uint8Array(data as ArrayBuffer);
 
