@@ -8,6 +8,7 @@ uniform sampler2D heightmap;
 uniform sampler2DArray atlas;
 
 attribute float lodLevel;
+attribute float texId;
 
 flat varying int vLodLevel;
 flat varying float vHeightScale;
@@ -17,7 +18,7 @@ void main() {
 
   vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz;
 
-  vHeightScale = texture(atlas, (vec3(uv[0], 1.0 - uv[1], 0))).r;
+  vHeightScale = texture(atlas, (vec3(uv[0], 1.0 - uv[1], texId))).r;
   worldPos.y = vHeightScale * 800.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);

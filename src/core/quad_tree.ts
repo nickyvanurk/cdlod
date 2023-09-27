@@ -1,20 +1,21 @@
 import * as THREE from 'three';
 
 export enum State {
-  unloaded,
+  empty,
   isLoading,
   loaded,
 }
 
 export class Node {
   children: Node[] = [];
+  texId = 0;
 
   constructor(
     public x: number,
     public y: number,
     public halfSize: number,
     public level = 0,
-    public state = State.unloaded
+    public state = State.empty
   ) {}
 
   traverse(cb: (node: Node) => void) {

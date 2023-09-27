@@ -26,7 +26,7 @@ export class World {
     document.body.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 100000);
-    this.camera.position.y = 1500;
+    this.camera.position.y = 15000;
     this.camera.lookAt(new THREE.Vector3());
 
     this.controls = new MapControls(this.camera, this.renderer.domElement);
