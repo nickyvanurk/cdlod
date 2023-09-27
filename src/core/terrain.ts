@@ -17,7 +17,7 @@ export class Terrain extends THREE.Group {
 
     const MAX_INSTANCES = 2000;
 
-    this.tree = new QuadTree(0, 0, 4096, 0, true);
+    this.tree = new QuadTree(0, 0, 4096, 0, 0);
 
     const minLodDistance = 128 * 6;
     const lodLevels = 4;
@@ -42,13 +42,9 @@ export class Terrain extends THREE.Group {
     const fileLoader = new THREE.FileLoader();
     fileLoader.setResponseType('arraybuffer');
 
-    const atlas: THREE.DataTexture = new THREE.DataTexture(
-      new Uint8Array(4 * 256 * 256),
-      256,
-      256,
-      THREE.RGBAFormat,
-      THREE.UnsignedByteType
-    );
+    const depth = 100;
+    const textureBuffer = new Uint8Array(4 * 256 * 256 * depth);
+    const atlas = new THREE.DataArrayTexture(textureBuffer, 256, 256, depth);
 
     // node description buffer
 
@@ -67,29 +63,18 @@ export class Terrain extends THREE.Group {
     const material = new THREE.ShaderMaterial(shaderConfig);
 
     fileLoader.load('./src/assets/terrain/5000000000.hght', (data) => {
-      const view = new Uint8Array(data as ArrayBuffer);
+      const dataBuffer = new Uint8Array(data as ArrayBuffer);
 
-      const resolution = 256 * 256;
-      const buffer = new Uint8Array(4 * resolution);
-
-      for (let i = 0; i < resolution; i++) {
-        const height = ((((view[i * 2 + 1] & 0xff) << 8) | (view[i * 2] & 0xff)) / 65535) * 255;
+      for (let i = 0; i < 256 * 256; i++) {
+        const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
         const stride = i * 4;
-        buffer[stride] = height;
-        buffer[stride + 1] = height;
-        buffer[stride + 2] = height;
-        buffer[stride + 3] = 255;
+        textureBuffer[stride] = height;
+        textureBuffer[stride + 1] = height;
+        textureBuffer[stride + 2] = height;
+        textureBuffer[stride + 3] = 255;
       }
 
-      const texture = new THREE.DataTexture(buffer, 256, 256, THREE.RGBAFormat, THREE.UnsignedByteType);
-      texture.minFilter = THREE.NearestFilter;
-      texture.magFilter = THREE.NearestFilter;
-      texture.generateMipmaps = false;
-      texture.needsUpdate = true;
-
-      material.uniforms.atlas.value.dispose();
-      material.uniforms.atlas.value = texture;
-      material.needsUpdate = true;
+      material.uniforms.atlas.value.needsUpdate = true;
     });
 
     gui

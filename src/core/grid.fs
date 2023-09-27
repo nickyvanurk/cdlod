@@ -1,9 +1,10 @@
 precision mediump float;
+precision highp sampler2DArray;
 
 uniform sampler2D heightmap;
 uniform vec3 colors[5];
 uniform bool enableLodColors;
-uniform sampler2D atlas;
+uniform sampler2DArray atlas;
 
 flat varying int vLodLevel;
 flat varying float vHeightScale;
