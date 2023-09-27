@@ -110,8 +110,12 @@ export class Terrain extends THREE.Group {
     const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
 
     const selectedNodes: { node: QuadTree; level: number }[] = [];
-    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, frustum, (node, level) => {
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, frustum, (node, level, loadChildren) => {
       selectedNodes.push({ node, level });
+
+      if (loadChildren) {
+        // console.log(node.children);
+      }
     });
 
     for (const [idx, obj] of selectedNodes.entries()) {

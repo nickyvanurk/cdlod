@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 
+enum State {
+  unloaded,
+  isLoading,
+  loaded,
+}
+
 export class Node {
   children: Node[] = [];
 
@@ -8,7 +14,7 @@ export class Node {
     public y: number,
     public halfSize: number,
     public level = 0,
-    public loaded = false
+    public state = State.unloaded
   ) {}
 
   traverse(cb: (node: Node) => void) {
@@ -24,7 +30,7 @@ export class Node {
     ranges: number[],
     level: number,
     frustum: THREE.Frustum,
-    cb: (node: Node, level: number) => void
+    cb: (node: Node, level: number, loadChildren: boolean) => void
   ) {
     const aabb = new THREE.Box3(
       new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
@@ -45,12 +51,12 @@ export class Node {
 
     // if most detailed
     if (level === 0) {
-      cb(this, this.level);
+      cb(this, this.level, false);
       return true;
     } else {
       // if node lies completely in the smaller range
       if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level - 1]))) {
-        cb(this, this.level);
+        cb(this, this.level, false);
       } else {
         if (this.children.length === 0) {
           const subSize = this.halfSize / 2;
@@ -60,10 +66,22 @@ export class Node {
           this.children.push(new Node(this.x + subSize, this.y + subSize, subSize, this.level + 1));
         }
 
+        let allChildrenLoaded = true;
         for (const child of this.children) {
-          if (!child.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-            cb(child, child.level);
+          if (!(child.state === State.loaded)) {
+            allChildrenLoaded = false;
+            break;
           }
+        }
+
+        if (allChildrenLoaded) {
+          for (const child of this.children) {
+            if (!child.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+              cb(child, child.level, false);
+            }
+          }
+        } else {
+          cb(this, this.level, true);
         }
       }
     }
