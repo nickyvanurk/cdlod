@@ -15,9 +15,19 @@ export class Terrain extends THREE.Group {
   private textureIdx = 0;
   private maxTextures = 500;
   private lodLevels = 8;
+  private worker: Worker;
 
   constructor(gui: GUI) {
     super();
+
+    this.worker = new Worker('./src/core/worker.ts');
+    this.worker.onmessage = (ev) => {
+      const view = new Uint8Array(ev.data);
+      console.log(view);
+    };
+
+    const sab = new SharedArrayBuffer(1024);
+    this.worker.postMessage(sab);
 
     const tileSize = 128;
 
