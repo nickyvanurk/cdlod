@@ -41,11 +41,12 @@ function loadTileFromFile(
       const size = 256 * 256;
       for (let i = 0; i < size; i++) {
         const stride = (texIdx * size + i) * 4;
-        const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
+        // const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
 
-        buffer[stride + 0] = height;
-        buffer[stride + 1] = height;
-        buffer[stride + 2] = height;
+        // Use red and greed channels to store 16 bit value. Convert to uint16 in shader.
+        buffer[stride + 0] = dataBuffer[i * 2];
+        buffer[stride + 1] = dataBuffer[i * 2 + 1];
+        buffer[stride + 2] = 0;
         buffer[stride + 3] = 255;
       }
 

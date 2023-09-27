@@ -18,8 +18,9 @@ void main() {
 
   vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz;
 
-  vHeightScale = texture(atlas, (vec3(uv[0], 1.0 - uv[1], texId))).r;
-  worldPos.y = vHeightScale * 800.0;
+  vec4 texel = texture(atlas, (vec3(uv[0], 1.0 - uv[1], texId)));
+  worldPos.y = (texel.g * float(1 << 8) + texel.r);
+  vHeightScale = worldPos.y / 800.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
 }
