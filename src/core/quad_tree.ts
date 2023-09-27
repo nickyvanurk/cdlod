@@ -1,33 +1,22 @@
 import * as THREE from 'three';
 
 export class Node {
-  subTL: Node | null = null;
-  subTR: Node | null = null;
-  subBL: Node | null = null;
-  subBR: Node | null = null;
+  children: Node[] = [];
 
   constructor(
     public x: number,
     public y: number,
     public halfSize: number,
-    public level = 0
-  ) {
-    if (level < 5) {
-      const subSize = halfSize / 2;
-      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
-      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
-      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1);
-      this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1);
-    }
-  }
+    public level = 0,
+    public loaded = false
+  ) {}
 
   traverse(cb: (node: Node) => void) {
     cb(this);
 
-    this.subTL?.traverse(cb);
-    this.subTR?.traverse(cb);
-    this.subBL?.traverse(cb);
-    this.subBR?.traverse(cb);
+    for (const child of this.children) {
+      child.traverse(cb);
+    }
   }
 
   selectNodes(
@@ -54,43 +43,27 @@ export class Node {
       return true;
     }
 
+    // if most detailed
     if (level === 0) {
-      // we are at the most detailed level
-      // four 1/2 resolution nodes form one whole node. it's needed for when when we need to
-      // only add a part of a node.
-      if (this.subTL && this.subTR && this.subBL && this.subBR) {
-        cb(this.subTL, this.level);
-        cb(this.subTR, this.level);
-        cb(this.subBL, this.level);
-        cb(this.subBR, this.level);
-      }
+      cb(this, this.level);
       return true;
     } else {
+      // if node lies completely in the smaller range
       if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level - 1]))) {
-        if (this.subTL && this.subTR && this.subBL && this.subBR) {
-          cb(this.subTL, this.level);
-          cb(this.subTR, this.level);
-          cb(this.subBL, this.level);
-          cb(this.subBR, this.level);
-        }
+        cb(this, this.level);
       } else {
-        // add only a part of the node. again, children can be either part of this node or
-        // a child node, depending on the level. all nodes are 1/2 resolution. so the root
-        // node exists as four 1/2 resolution nodes, the same goes for all other nodes.
-        if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-          cb(this.subTL, this.level);
+        if (this.children.length === 0) {
+          const subSize = this.halfSize / 2;
+          this.children.push(new Node(this.x - subSize, this.y - subSize, subSize, this.level + 1));
+          this.children.push(new Node(this.x + subSize, this.y - subSize, subSize, this.level + 1));
+          this.children.push(new Node(this.x - subSize, this.y + subSize, subSize, this.level + 1));
+          this.children.push(new Node(this.x + subSize, this.y + subSize, subSize, this.level + 1));
         }
 
-        if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-          cb(this.subTR, this.level);
-        }
-
-        if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-          cb(this.subBL, this.level);
-        }
-
-        if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-          cb(this.subBR, this.level);
+        for (const child of this.children) {
+          if (!child.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+            cb(child, child.level);
+          }
         }
       }
     }

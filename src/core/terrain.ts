@@ -17,9 +17,9 @@ export class Terrain extends THREE.Group {
 
     const MAX_INSTANCES = 2000;
 
-    this.tree = new QuadTree(0, 0, 4096);
+    this.tree = new QuadTree(0, 0, 4096, 0, true);
 
-    const minLodDistance = tileSize * 2;
+    const minLodDistance = 128 * 6;
     const lodLevels = 4;
     for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
