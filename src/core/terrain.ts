@@ -19,7 +19,7 @@ export class Terrain extends THREE.Group {
   constructor(gui: GUI) {
     super();
 
-    const buffer = new SharedArrayBuffer(256 * 256 * 4 * this.maxTextures);
+    const buffer = new SharedArrayBuffer(256 * 256 * 2 * this.maxTextures);
     this.textureBuffer = new Uint8Array(buffer);
 
     const tileSize = 128;
@@ -30,6 +30,7 @@ export class Terrain extends THREE.Group {
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
     const atlas = new THREE.DataArrayTexture(this.textureBuffer, 256, 256, this.maxTextures);
+    atlas.format = THREE.RGFormat;
 
     const shaderConfig = {
       uniforms: {
