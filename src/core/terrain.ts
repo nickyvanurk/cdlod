@@ -11,23 +11,33 @@ export class Terrain extends THREE.Group {
   private grid: THREE.InstancedMesh;
   private material: THREE.ShaderMaterial;
   private fileLoader: THREE.FileLoader;
-  private textureBuffer: Uint8Array;
-  private textureIdx = 0;
-  private maxTextures = 500;
+  private maxTextures = 500; // TODO: shared with worker, refactor
   private lodLevels = 8;
+
   private worker: Worker;
+  private textureBuffer: Uint8Array;
 
   constructor(gui: GUI) {
     super();
 
-    this.worker = new Worker('./src/core/worker.ts');
+    this.worker = new Worker('./src/core/worker.ts', { type: 'module' });
     this.worker.onmessage = (ev) => {
-      const view = new Uint8Array(ev.data);
-      console.log(view);
+      for (const nodeData of ev.data) {
+        const { level, x, y, texId } = nodeData;
+
+        this.tree.traverse((node) => {
+          if (node.level === level && node.x === x && node.y === y) {
+            node.texId = texId;
+            node.state = State.loaded;
+          }
+        });
+      }
+
+      this.material.uniforms.atlas.value.needsUpdate = true;
     };
 
-    const sab = new SharedArrayBuffer(1024);
-    this.worker.postMessage(sab);
+    const buffer = new SharedArrayBuffer(256 * 256 * 4 * this.maxTextures);
+    this.textureBuffer = new Uint8Array(buffer);
 
     const tileSize = 128;
 
@@ -35,11 +45,11 @@ export class Terrain extends THREE.Group {
 
     this.tree = new QuadTree(0, 0, 4096, 0, 0);
 
-    const minLodDistance = 128;
+    const minLodDistance = 32;
     for (let i = 0; i <= this.lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + this.lodLevels - i);
     }
-    this.lodRanges[0] *= 8;
+    this.lodRanges[0] *= 2;
     console.log(this.lodRanges);
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
@@ -60,7 +70,6 @@ export class Terrain extends THREE.Group {
     this.fileLoader = new THREE.FileLoader();
     this.fileLoader.setResponseType('arraybuffer');
 
-    this.textureBuffer = new Uint8Array(4 * 256 * 256 * this.maxTextures);
     const atlas = new THREE.DataArrayTexture(this.textureBuffer, 256, 256, this.maxTextures);
 
     // node description buffer
@@ -79,8 +88,7 @@ export class Terrain extends THREE.Group {
     };
     this.material = new THREE.ShaderMaterial(shaderConfig);
 
-    // Create decorator around fileLoader -> tileLoader
-    this.loadTile(this.fileLoader, 0, 0, this.textureBuffer);
+    this.worker.postMessage([{ level: 0, x: 0, y: 0, buffer: this.textureBuffer }]);
 
     gui
       .add(shaderConfig, 'wireframe')
@@ -105,23 +113,18 @@ export class Terrain extends THREE.Group {
       selectedNodes.push({ node, level, loadChildren });
 
       if (loadChildren) {
-        for (const child of node.children) {
-          if (child.state !== State.empty) continue;
-          child.state = State.isLoading;
+        const childrenToLoad = node.children.filter((n) => n.state === State.empty);
+        childrenToLoad.forEach((n) => (n.state = State.isLoading));
+        const tilesToLoad = childrenToLoad.map((n) => {
+          return {
+            level: n.level,
+            x: n.x,
+            y: n.y,
+            buffer: this.textureBuffer,
+          };
+        });
 
-          if (child.state === State.isLoading) {
-            let tileSize = 8192;
-            for (let i = 0; i < child.level; i++) tileSize /= 2;
-            const tileX = Math.floor((child.x + 4096) / tileSize);
-            const tileY = Math.floor((child.y + 4096) / tileSize);
-            const tileIdx = calcZOrderCurveValue(tileX, tileY);
-
-            this.loadTile(this.fileLoader, child.level, tileIdx, this.textureBuffer, (texIdx) => {
-              child.state = State.loaded;
-              child.texId = texIdx;
-            });
-          }
-        }
+        if (tilesToLoad.length > 0) this.worker.postMessage(tilesToLoad);
       }
     });
 
@@ -144,68 +147,4 @@ export class Terrain extends THREE.Group {
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }
-
-  async loadTile(
-    fileLoader: THREE.FileLoader,
-    level: number,
-    tileIdx: number,
-    buffer: Uint8Array,
-    cb?: (texId: number) => void
-  ) {
-    // TODO: Only increase textureIdx when tile successfully loaded.
-    const texId = (await loadTileFromFile(
-      fileLoader,
-      level,
-      tileIdx,
-      buffer,
-      this.textureIdx++ % this.maxTextures
-    )) as number;
-    this.material.uniforms.atlas.value.needsUpdate = true;
-    if (cb) cb(texId);
-  }
-}
-
-function loadTileFromFile(
-  fileLoader: THREE.FileLoader,
-  level: number,
-  tileIdx: number,
-  buffer: Uint8Array,
-  texIdx: number = 0
-) {
-  return new Promise((resolve) => {
-    const idxInHex = tileIdx.toString(16).toUpperCase().padStart(8, '0');
-    fileLoader.load(`./src/assets/terrain/5${level}${idxInHex}.hght`, (data) => {
-      const dataBuffer = new Uint8Array(data as ArrayBuffer);
-
-      const size = 256 * 256;
-      for (let i = 0; i < size; i++) {
-        const stride = (texIdx * size + i) * 4;
-        const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
-
-        buffer[stride + 0] = height;
-        buffer[stride + 1] = height;
-        buffer[stride + 2] = height;
-        buffer[stride + 3] = 255;
-      }
-
-      resolve(texIdx);
-    });
-  });
-}
-
-function calcZOrderCurveValue(x: number, y: number) {
-  const MASKS = [0x55555555, 0x33333333, 0x0f0f0f0f, 0x00ff00ff];
-  const SHIFTS = [1, 2, 4, 8];
-
-  x = (x | (x << SHIFTS[3])) & MASKS[3];
-  x = (x | (x << SHIFTS[2])) & MASKS[2];
-  x = (x | (x << SHIFTS[1])) & MASKS[1];
-  x = (x | (x << SHIFTS[0])) & MASKS[0];
-
-  y = (y | (y << SHIFTS[3])) & MASKS[3];
-  y = (y | (y << SHIFTS[2])) & MASKS[2];
-  y = (y | (y << SHIFTS[1])) & MASKS[1];
-  y = (y | (y << SHIFTS[0])) & MASKS[0];
-
-  return x | (y << 1);
 }
