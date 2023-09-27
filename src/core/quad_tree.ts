@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-enum State {
+export enum State {
   unloaded,
   isLoading,
   loaded,

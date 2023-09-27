@@ -3,12 +3,13 @@ import * as THREE from 'three';
 
 import gridFragmentShader from './grid.fs';
 import gridVertexShader from './grid.vs';
-import { Node as QuadTree } from './quad_tree';
+import { Node as QuadTree, State } from './quad_tree';
 
 export class Terrain extends THREE.Group {
   private lodRanges: number[] = [];
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
+  private material: THREE.ShaderMaterial;
 
   constructor(gui: GUI) {
     super();
@@ -60,33 +61,21 @@ export class Terrain extends THREE.Group {
       fragmentShader: gridFragmentShader,
       wireframe: true,
     };
-    const material = new THREE.ShaderMaterial(shaderConfig);
+    this.material = new THREE.ShaderMaterial(shaderConfig);
 
-    fileLoader.load('./src/assets/terrain/5000000000.hght', (data) => {
-      const dataBuffer = new Uint8Array(data as ArrayBuffer);
-
-      for (let i = 0; i < 256 * 256; i++) {
-        const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
-        const stride = i * 4;
-        textureBuffer[stride] = height;
-        textureBuffer[stride + 1] = height;
-        textureBuffer[stride + 2] = height;
-        textureBuffer[stride + 3] = 255;
-      }
-
-      material.uniforms.atlas.value.needsUpdate = true;
-    });
+    // Create decorator around fileLoader -> tileLoader
+    this.loadTile(fileLoader, 0, 0, textureBuffer, 0);
 
     gui
       .add(shaderConfig, 'wireframe')
       .name('Wireframe')
-      .onChange((visible: boolean) => (material.wireframe = visible));
+      .onChange((visible: boolean) => (this.material.wireframe = visible));
     gui
       .add(shaderConfig.uniforms.enableLodColors, 'value')
       .name('LOD Colors')
-      .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
+      .onChange((enable: boolean) => (this.material.uniforms.enableLodColors.value = enable));
 
-    this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
+    this.grid = new THREE.InstancedMesh(geometry, this.material, MAX_INSTANCES);
     this.grid.count = 1;
     this.add(this.grid);
   }
@@ -99,6 +88,10 @@ export class Terrain extends THREE.Group {
       selectedNodes.push({ node, level });
 
       if (loadChildren) {
+        for (const child of node.children) {
+          child.state = State.isLoading;
+        }
+
         // console.log(node.children);
       }
     });
@@ -120,4 +113,38 @@ export class Terrain extends THREE.Group {
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }
+
+  async loadTile(fileLoader: THREE.FileLoader, level: number, tileIdx: number, buffer: Uint8Array, texIdx: number = 0) {
+    await loadTileFromFile(fileLoader, level, tileIdx, buffer, texIdx);
+    this.material.uniforms.atlas.value.needsUpdate = true;
+  }
+}
+
+function loadTileFromFile(
+  fileLoader: THREE.FileLoader,
+  level: number,
+  tileIdx: number,
+  buffer: Uint8Array,
+  texIdx: number = 0
+) {
+  return new Promise((resolve) => {
+    const idxInHex = tileIdx.toString(16).toUpperCase().padStart(8, '0');
+    fileLoader.load(`./src/assets/terrain/5${level}${idxInHex}.hght`, (data) => {
+      const dataBuffer = new Uint8Array(data as ArrayBuffer);
+
+      const size = 256 * 256;
+      for (let i = 0; i < size; i++) {
+        const start = size * texIdx * 4;
+        const stride = i * 4;
+        const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
+
+        buffer[start + stride] = height;
+        buffer[start + stride + 1] = height;
+        buffer[start + stride + 2] = height;
+        buffer[start + stride + 3] = 255;
+      }
+
+      resolve(true);
+    });
+  });
 }
