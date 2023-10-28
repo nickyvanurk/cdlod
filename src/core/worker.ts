@@ -1,4 +1,4 @@
-importScripts('./three.js');
+import * as THREE from 'three';
 
 let textureIdx = 1;
 const maxTextures = 500;
