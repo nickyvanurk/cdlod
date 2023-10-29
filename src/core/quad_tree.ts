@@ -9,6 +9,8 @@ export enum State {
 export class Node {
   children: Node[] = [];
   texId = 0;
+  minY = 0;
+  maxY = 0;
 
   constructor(
     public x: number,
@@ -16,7 +18,7 @@ export class Node {
     public halfSize: number,
     public level = 0,
     public state = State.empty
-  ) {}
+  ) { }
 
   traverse(cb: (node: Node) => void) {
     cb(this);
@@ -34,8 +36,8 @@ export class Node {
     cb: (node: Node, level: number, loadChildren: boolean) => void
   ) {
     const aabb = new THREE.Box3(
-      new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
-      new THREE.Vector3(this.x + this.halfSize, 0, this.y + this.halfSize)
+      new THREE.Vector3(this.x - this.halfSize, this.minY, this.y - this.halfSize),
+      new THREE.Vector3(this.x + this.halfSize, this.maxY, this.y + this.halfSize)
     );
 
     // check biggest range first, is this correct?

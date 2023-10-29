@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { randFloat, randInt } from 'three/src/math/MathUtils.js';
 
 let textureIdx = 1;
 const maxTextures = 500;
@@ -12,15 +13,21 @@ self.addEventListener('message', async (ev) => {
   for (const nodeData of ev.data) {
     const { level, x, y, buffer } = nodeData;
 
-    let tileSize = 8192;
+    let tileSize = 16384;
     for (let i = 0; i < level; i++) tileSize /= 2;
 
-    const tileX = Math.floor((x + 4096) / tileSize);
-    const tileY = Math.floor((y + 4096) / tileSize);
+    const tileX = Math.floor((x + 8192) / tileSize);
+    const tileY = Math.floor((y + 8192) / tileSize);
     const tileIdx = calcZOrderCurveValue(tileX, tileY);
 
-    const texId = (await loadTileFromFile(fileLoader, level, tileIdx, buffer, textureIdx++ % maxTextures)) as number;
-    result.push({ level, x, y, texId });
+    const { texId, minY, maxY } = await loadTileFromFile(
+      fileLoader,
+      level,
+      tileIdx,
+      buffer,
+      textureIdx++ % maxTextures
+    );
+    result.push({ level, x, y, texId, minY, maxY });
   }
 
   self.postMessage(result);
@@ -30,27 +37,36 @@ function loadTileFromFile(
   fileLoader: THREE.FileLoader,
   level: number,
   tileIdx: number,
-  buffer: Uint8Array,
+  buffer: Float32Array,
   texIdx: number = 0
-) {
+): Promise<{ texId: number; minY: number; maxY: number }> {
   return new Promise((resolve) => {
     const idxInHex = tileIdx.toString(16).toUpperCase().padStart(8, '0');
     fileLoader.load(`../assets/terrain/5${level}${idxInHex}.hght`, (data) => {
-      const dataBuffer = new Uint8Array(data as ArrayBuffer);
+      const dataBuffer = new Uint16Array(data as ArrayBuffer);
+
+      let minY = 800;
+      let maxY = 0;
 
       const size = 256 * 256;
       for (let i = 0; i < size; i++) {
-        const stride = (texIdx * size + i) * 2;
-        // const height = ((((dataBuffer[i * 2 + 1] & 0xff) << 8) | (dataBuffer[i * 2] & 0xff)) / 65535) * 255;
+        const stride = (texIdx * size + i) * 1;
 
         // Use red and greed channels to store 16 bit value. Convert to uint16 in shader.
-        buffer[stride + 0] = dataBuffer[i * 2];
-        buffer[stride + 1] = dataBuffer[i * 2 + 1];
-        // buffer[stride + 2] = 0;
-        // buffer[stride + 3] = 255;
+        // buffer[stride + 0] = dataBuffer[i * 2];
+        // buffer[stride + 1] = dataBuffer[i * 2 + 1];
+
+        const height = (dataBuffer[i] / 65535.0) * 800;
+
+        buffer[stride] = height;
+
+        if (height > maxY) maxY = height;
+        else if (height < minY) minY = height;
       }
 
-      resolve(texIdx);
+      // console.log('Min Y: ', minY, 'Max y: ', maxY);
+
+      resolve({ texId: texIdx, minY, maxY });
     });
   });
 }

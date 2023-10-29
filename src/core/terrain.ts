@@ -14,23 +14,27 @@ export class Terrain extends THREE.Group {
   private lodLevels = 8;
 
   private worker: Worker;
-  private textureBuffer: Uint8Array;
+  private textureBuffer: Float32Array;
 
   constructor(gui: GUI) {
     super();
 
-    const buffer = new SharedArrayBuffer(256 * 256 * 2 * this.maxTextures);
-    this.textureBuffer = new Uint8Array(buffer);
+    const buffer = new SharedArrayBuffer(256 * 256 * 4 * this.maxTextures);
+    this.textureBuffer = new Float32Array(buffer);
 
-    const tileSize = 128;
+    const tileSize = 256;
 
     const MAX_INSTANCES = 2000;
 
-    this.tree = new QuadTree(0, 0, 4096, 0, 0);
+    this.tree = new QuadTree(0, 0, 8192, 0, 0);
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
     const atlas = new THREE.DataArrayTexture(this.textureBuffer, 256, 256, this.maxTextures);
-    atlas.format = THREE.RGFormat;
+    atlas.format = THREE.RedFormat;
+    // atlas.format = THREE.RGIntegerFormat;
+    atlas.type = THREE.FloatType;
+    // atlas.internalFormat = 'R16UI';
+    // atlas.internalFormat = 'RG16I';
 
     const shaderConfig = {
       uniforms: {
@@ -46,7 +50,7 @@ export class Terrain extends THREE.Group {
     };
     this.material = new THREE.ShaderMaterial(shaderConfig);
 
-    const queue: { level: number; x: number; y: number; texId: number }[] = [];
+    const queue: { level: number; x: number; y: number; texId: number; minY: number; maxY: number }[] = [];
 
     this.worker = new Worker('./src/core/worker.ts', { type: 'module' });
     this.worker.onmessage = (ev) => queue.push(...ev.data);
@@ -57,6 +61,19 @@ export class Terrain extends THREE.Group {
             if (node.level === msg.level && node.x === msg.x && node.y === msg.y) {
               node.texId = msg.texId;
               node.state = State.loaded;
+              node.minY = msg.minY;
+              node.maxY = msg.maxY;
+
+              // Debug bounding AABB
+              // const geometry = new THREE.BoxGeometry(
+              //   256 << (6 - node.level),
+              //   node.maxY - node.minY,
+              //   256 << (6 - node.level)
+              // );
+              // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+              // const cube = new THREE.Mesh(geometry, material);
+              // cube.position.set(node.x, (node.maxY - node.minY) / 2, node.y);
+              // this.add(cube);
             }
           }
         });
