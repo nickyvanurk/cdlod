@@ -16,11 +16,4 @@ export default defineConfig({
   define: { global: 'window' },
   plugins: [glsl()],
   base: './',
-
-  server: {
-    headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-    },
-  },
 });

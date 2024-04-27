@@ -1,31 +1,33 @@
 import * as THREE from 'three';
 
-export enum State {
-  empty,
-  isLoading,
-  loaded,
-}
-
 export class Node {
-  children: Node[] = [];
-  texId = 0;
-  minY = 0;
-  maxY = 0;
+  subTL: Node | null = null;
+  subTR: Node | null = null;
+  subBL: Node | null = null;
+  subBR: Node | null = null;
 
   constructor(
     public x: number,
     public y: number,
     public halfSize: number,
-    public level = 0,
-    public state = State.empty
-  ) { }
+    public level = 0
+  ) {
+    if (level < 5) {
+      const subSize = halfSize / 2;
+      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
+      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
+      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1);
+      this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1);
+    }
+  }
 
   traverse(cb: (node: Node) => void) {
     cb(this);
 
-    for (const child of this.children) {
-      child.traverse(cb);
-    }
+    this.subTL?.traverse(cb);
+    this.subTR?.traverse(cb);
+    this.subBL?.traverse(cb);
+    this.subBR?.traverse(cb);
   }
 
   selectNodes(
@@ -33,11 +35,11 @@ export class Node {
     ranges: number[],
     level: number,
     frustum: THREE.Frustum,
-    cb: (node: Node, level: number, loadChildren: boolean) => void
+    cb: (node: Node, level: number) => void
   ) {
     const aabb = new THREE.Box3(
-      new THREE.Vector3(this.x - this.halfSize, this.minY, this.y - this.halfSize),
-      new THREE.Vector3(this.x + this.halfSize, this.maxY, this.y + this.halfSize)
+      new THREE.Vector3(this.x - this.halfSize, 0, this.y - this.halfSize),
+      new THREE.Vector3(this.x + this.halfSize, 0, this.y + this.halfSize)
     );
 
     // check biggest range first, is this correct?
@@ -52,39 +54,43 @@ export class Node {
       return true;
     }
 
-    // if most detailed
     if (level === 0) {
-      cb(this, this.level, false);
+      // we are at the most detailed level
+      // four 1/2 resolution nodes form one whole node. it's needed for when when we need to
+      // only add a part of a node.
+      if (this.subTL && this.subTR && this.subBL && this.subBR) {
+        cb(this.subTL, this.level);
+        cb(this.subTR, this.level);
+        cb(this.subBL, this.level);
+        cb(this.subBR, this.level);
+      }
       return true;
     } else {
-      // if node lies completely in the smaller range
       if (!aabb.intersectsSphere(new THREE.Sphere(eye, ranges[level - 1]))) {
-        cb(this, this.level, false);
+        if (this.subTL && this.subTR && this.subBL && this.subBR) {
+          cb(this.subTL, this.level);
+          cb(this.subTR, this.level);
+          cb(this.subBL, this.level);
+          cb(this.subBR, this.level);
+        }
       } else {
-        if (this.children.length === 0) {
-          const subSize = this.halfSize / 2;
-          this.children.push(new Node(this.x - subSize, this.y - subSize, subSize, this.level + 1));
-          this.children.push(new Node(this.x + subSize, this.y - subSize, subSize, this.level + 1));
-          this.children.push(new Node(this.x - subSize, this.y + subSize, subSize, this.level + 1));
-          this.children.push(new Node(this.x + subSize, this.y + subSize, subSize, this.level + 1));
+        // add only a part of the node. again, children can be either part of this node or
+        // a child node, depending on the level. all nodes are 1/2 resolution. so the root
+        // node exists as four 1/2 resolution nodes, the same goes for all other nodes.
+        if (this.subTL !== null && !this.subTL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+          cb(this.subTL, this.level);
         }
 
-        let allChildrenLoaded = true;
-        for (const child of this.children) {
-          if (!(child.state === State.loaded)) {
-            allChildrenLoaded = false;
-            break;
-          }
+        if (this.subTR !== null && !this.subTR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+          cb(this.subTR, this.level);
         }
 
-        if (allChildrenLoaded) {
-          for (const child of this.children) {
-            if (!child.selectNodes(eye, ranges, level - 1, frustum, cb)) {
-              cb(child, child.level, false);
-            }
-          }
-        } else {
-          cb(this, this.level, true);
+        if (this.subBL !== null && !this.subBL.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+          cb(this.subBL, this.level);
+        }
+
+        if (this.subBR !== null && !this.subBR.selectNodes(eye, ranges, level - 1, frustum, cb)) {
+          cb(this.subBR, this.level);
         }
       }
     }

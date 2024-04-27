@@ -3,147 +3,71 @@ import * as THREE from 'three';
 
 import gridFragmentShader from './grid.fs';
 import gridVertexShader from './grid.vs';
-import { Node as QuadTree, State } from './quad_tree';
+import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
   private lodRanges: number[] = [];
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
-  private material: THREE.ShaderMaterial;
-  private maxTextures = 500; // TODO: shared with worker, refactor
-  private lodLevels = 8;
-
-  private worker: Worker;
-  private textureBuffer: Float32Array;
 
   constructor(gui: GUI) {
     super();
 
-    const buffer = new SharedArrayBuffer(256 * 256 * 4 * this.maxTextures);
-    this.textureBuffer = new Float32Array(buffer);
-
-    const tileSize = 256;
-
     const MAX_INSTANCES = 2000;
 
-    this.tree = new QuadTree(0, 0, 8192, 0, 0);
+    this.tree = new QuadTree(0, 0, 1024);
+
+    const minLodDistance = 128;
+    const lodLevels = 4;
+    for (let i = 0; i <= lodLevels; i++) {
+      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
+    }
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
-    const atlas = new THREE.DataArrayTexture(this.textureBuffer, 256, 256, this.maxTextures);
-    atlas.format = THREE.RedFormat;
-    // atlas.format = THREE.RGIntegerFormat;
-    atlas.type = THREE.FloatType;
-    // atlas.internalFormat = 'R16UI';
-    // atlas.internalFormat = 'RG16I';
 
-    const shaderConfig = {
-      uniforms: {
-        sectorSize: { value: tileSize },
-        lodRanges: { value: this.lodRanges },
-        colors: { value: colors },
-        enableLodColors: { value: false },
-        atlas: { value: atlas },
-      },
-      vertexShader: gridVertexShader,
-      fragmentShader: gridFragmentShader,
-      wireframe: true,
-    };
-    this.material = new THREE.ShaderMaterial(shaderConfig);
-
-    const queue: { level: number; x: number; y: number; texId: number; minY: number; maxY: number }[] = [];
-
-    this.worker = new Worker('./src/core/worker.ts', { type: 'module' });
-    this.worker.onmessage = (ev) => queue.push(...ev.data);
-    setInterval(() => {
-      if (queue.length > 0) {
-        this.tree.traverse((node) => {
-          for (const msg of queue) {
-            if (node.level === msg.level && node.x === msg.x && node.y === msg.y) {
-              node.texId = msg.texId;
-              node.state = State.loaded;
-              node.minY = msg.minY;
-              node.maxY = msg.maxY;
-
-              // Debug bounding AABB
-              // const geometry = new THREE.BoxGeometry(
-              //   256 << (6 - node.level),
-              //   node.maxY - node.minY,
-              //   256 << (6 - node.level)
-              // );
-              // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-              // const cube = new THREE.Mesh(geometry, material);
-              // cube.position.set(node.x, (node.maxY - node.minY) / 2, node.y);
-              // this.add(cube);
-            }
-          }
-        });
-
-        this.material.uniforms.atlas.value.needsUpdate = true;
-
-        queue.length = 0;
-      }
-    }, 500);
-
-    const minLodDistance = 32;
-    for (let i = 0; i <= this.lodLevels; i++) {
-      this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + this.lodLevels - i);
-    }
-    this.lodRanges[0] *= 2;
-    console.log(this.lodRanges);
-
-    //TODO: Generate normals for lighting
-
-    //TODO: Create custom grid to fit new 256x256 data source (1/2 vertex on right and bottom for each quarter).
-    // and generate it using the better pattern.
-    const geometry = new THREE.PlaneGeometry(1, 1, tileSize - 1, tileSize - 1);
+    const sectorSize = 64;
+    const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
     geometry.setAttribute('lodLevel', lodLevelAttribute);
 
-    const texIdAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
-    geometry.setAttribute('texId', texIdAttribute);
+    const textureLoader = new THREE.TextureLoader();
 
-    // node description buffer
-
-    this.worker.postMessage([{ level: 0, x: 0, y: 0, buffer: this.textureBuffer }]);
+    const shaderConfig = {
+      uniforms: {
+        sectorSize: { value: sectorSize },
+        lodRanges: { value: this.lodRanges },
+        colors: { value: colors },
+        heightmap: { value: textureLoader.load('./src/core/heightmap.png') },
+        enableLodColors: { value: false },
+      },
+      vertexShader: gridVertexShader,
+      fragmentShader: gridFragmentShader,
+      wireframe: false,
+    };
+    const material = new THREE.ShaderMaterial(shaderConfig);
 
     gui
       .add(shaderConfig, 'wireframe')
       .name('Wireframe')
-      .onChange((visible: boolean) => (this.material.wireframe = visible));
+      .onChange((visible: boolean) => (material.wireframe = visible));
     gui
       .add(shaderConfig.uniforms.enableLodColors, 'value')
       .name('LOD Colors')
-      .onChange((enable: boolean) => (this.material.uniforms.enableLodColors.value = enable));
+      .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
 
-    this.grid = new THREE.InstancedMesh(geometry, this.material, MAX_INSTANCES);
+    this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
     this.add(this.grid);
   }
 
   update(eye: THREE.Vector3, frustum: THREE.Frustum) {
     const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
-    const texIdAttribute = this.grid.geometry.getAttribute('texId') as THREE.InstancedBufferAttribute;
 
-    const selectedNodes: { node: QuadTree; level: number; loadChildren: boolean }[] = [];
-    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), this.lodLevels, frustum, (node, level, loadChildren) => {
-      selectedNodes.push({ node, level, loadChildren });
-
-      if (loadChildren) {
-        const childrenToLoad = node.children.filter((n) => n.state === State.empty);
-        childrenToLoad.forEach((n) => (n.state = State.isLoading));
-        const tilesToLoad = childrenToLoad.map((n) => {
-          return {
-            level: n.level,
-            x: n.x,
-            y: n.y,
-            buffer: this.textureBuffer,
-          };
-        });
-
-        if (tilesToLoad.length > 0) this.worker.postMessage(tilesToLoad);
-      }
+    const selectedNodes: { node: QuadTree; level: number }[] = [];
+    this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, frustum, (node, level) => {
+      selectedNodes.push({ node, level });
     });
 
     for (const [idx, obj] of selectedNodes.entries()) {
@@ -157,11 +81,9 @@ export class Terrain extends THREE.Group {
       );
 
       lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
-      texIdAttribute.set(Float32Array.from([obj.node.texId]), idx);
     }
 
     lodLevelAttribute.needsUpdate = true;
-    texIdAttribute.needsUpdate = true;
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }

@@ -1,27 +1,46 @@
 
-precision highp float;
-precision highp sampler2DArray;
-precision highp int;
+precision mediump float;
 
 uniform float sectorSize;
 uniform float lodRanges[5];
 uniform sampler2D heightmap;
-uniform sampler2DArray atlas;
 
 attribute float lodLevel;
-attribute float texId;
 
 flat varying int vLodLevel;
-flat varying float vHeightScale;
+flat varying vec2 vUv;
+
+float morphValue(float dist) {
+  float low = 0.0;
+  if (lodLevel != 4.0) {
+    low = lodRanges[int(lodLevel) + 1];
+  }
+  float high = lodRanges[int(lodLevel)];
+  float factor = (dist - low) / (high - low);
+  return smoothstep(0.7, 1.0, factor);
+}
+
+vec2 morphVertex(vec2 vertex, vec2 mesh_pos, float morphValue) {
+  vec2 gridDim = vec2(sectorSize, sectorSize);
+  vec2 fraction = fract(mesh_pos * gridDim * 0.5) * 2.0 / gridDim;
+  return vertex - fraction * morphValue;
+}
 
 void main() {
+  // visualization: pass lod level for color tinting
   vLodLevel = int(floor(lodLevel));
 
   vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz;
 
-  vec4 texel = texture(atlas, (vec3(uv[0], 1.0 - uv[1], texId)));
-  worldPos.y = texel.r;
-  vHeightScale = worldPos.y / 800.0;
+  float dist = length(cameraPosition - worldPos);
+  float morphK = morphValue(dist);
+  vec2 morphedPos = morphVertex(position.xz, uv, morphK);
 
-  gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+  vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
+
+  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 1025.0) / 2050.0;
+
+  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * 100.0;
+
+  gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }
