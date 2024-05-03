@@ -1,12 +1,12 @@
 // eslint-disable-next-line
 // @ts-ignore
-import Stats from 'three/examples/jsm/libs/stats.module';
+import ThreeStats from 'three/examples/jsm/libs/stats.module';
 
-export class RenderStats {
+export class Stats {
   domElement = document.createElement('div');
 
-  private readonly stats = new Stats();
-  private readonly panels: Stats.Panel[] = [];
+  private readonly stats = new ThreeStats();
+  private readonly panels: ThreeStats.Panel[] = [];
 
   constructor(private readonly renderer: THREE.WebGLRenderer) {
     this.domElement.id = 'render-stats';
@@ -16,31 +16,31 @@ export class RenderStats {
     this.stats.domElement.style.flexDirection = 'column';
     this.domElement.appendChild(this.stats.domElement);
 
-    const msPanel = Stats.Panel('Delta', '#0f0', '#020');
+    const msPanel = ThreeStats.Panel('Delta', '#0f0', '#020');
     this.stats.addPanel(msPanel);
     this.panels.push(msPanel);
 
-    const callsPanel = Stats.Panel('Draw Calls', '#ff0', '#220');
+    const callsPanel = ThreeStats.Panel('Draw Calls', '#ff0', '#220');
     this.stats.addPanel(callsPanel);
     this.panels.push(callsPanel);
 
-    const programsPanel = Stats.Panel('Programs', '#ff0', '#220');
+    const programsPanel = ThreeStats.Panel('Programs', '#ff0', '#220');
     this.stats.addPanel(programsPanel);
     this.panels.push(programsPanel);
 
-    const geometriesPanel = Stats.Panel('Geometries', '#ff0', '#220');
+    const geometriesPanel = ThreeStats.Panel('Geometries', '#ff0', '#220');
     this.stats.addPanel(geometriesPanel);
     this.panels.push(geometriesPanel);
 
-    const pointsPanel = Stats.Panel('Points', '#f08', '#201');
+    const pointsPanel = ThreeStats.Panel('Points', '#f08', '#201');
     this.stats.addPanel(pointsPanel);
     this.panels.push(pointsPanel);
 
-    const linesPanel = Stats.Panel('Lines', '#f08', '#201');
+    const linesPanel = ThreeStats.Panel('Lines', '#f08', '#201');
     this.stats.addPanel(linesPanel);
     this.panels.push(linesPanel);
 
-    const trisPanel = Stats.Panel('Tris', '#f08', '#201');
+    const trisPanel = ThreeStats.Panel('Tris', '#f08', '#201');
     this.stats.addPanel(trisPanel);
     this.panels.push(trisPanel);
   }

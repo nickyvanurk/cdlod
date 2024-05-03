@@ -2,22 +2,17 @@ import * as THREE from 'three';
 // eslint-disable-next-line
 // @ts-ignore
 import { MapControls } from 'three/addons/controls/MapControls';
-// eslint-disable-next-line
-// @ts-ignore
-import type Stats from 'three/examples/jsm/libs/stats.module';
 
 import { Raf } from './raf';
-import { RenderStats } from './render_stats';
 import { Scene } from './scene';
+import { Stats } from './stats';
 
 export class World {
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.PerspectiveCamera;
   private controls: MapControls;
-
   private scene: Scene;
-
-  private renderStats: Stats;
+  private stats: Stats;
 
   constructor() {
     this.renderer = new THREE.WebGLRenderer();
@@ -32,8 +27,8 @@ export class World {
 
     this.scene = new Scene(this.camera);
 
-    this.renderStats = new RenderStats(this.renderer);
-    document.body.appendChild(this.renderStats.domElement);
+    this.stats = new Stats(this.renderer);
+    document.body.appendChild(this.stats.domElement);
 
     window.addEventListener('resize', this.handleResize.bind(this), false);
 
@@ -48,7 +43,7 @@ export class World {
 
     const endTime = performance.now() - startTime;
 
-    this.renderStats.update(endTime);
+    this.stats.update(endTime);
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
