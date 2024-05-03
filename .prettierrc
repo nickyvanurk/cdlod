@@ -7,9 +7,6 @@
   "trailingComma": "es5",
   "endOfLine": "auto",
   "importOrder": [
-    "^@core/(.*)$",
-    "^@ui/(.*)$",
-    "^@assets/(.*)$",
     "^[./]"
   ],
   "importOrderSeparation": true,

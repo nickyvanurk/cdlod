@@ -1,3 +1,3 @@
-import { World } from '@core/world';
+import { World } from './world';
 
 new World();

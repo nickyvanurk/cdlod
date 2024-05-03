@@ -1,7 +1,7 @@
 import GUI from 'lil-gui';
 import * as THREE from 'three';
 
-import { Terrain } from '@core/terrain';
+import { Terrain } from './terrain';
 
 export class Scene extends THREE.Scene {
   private terrain: Terrain;

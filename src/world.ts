@@ -6,10 +6,9 @@ import { MapControls } from 'three/addons/controls/MapControls';
 // @ts-ignore
 import type Stats from 'three/examples/jsm/libs/stats.module';
 
-import { Raf } from '@core/raf';
-import { Scene } from '@core/scene';
-
-import { RenderStats } from '@ui/render_stats';
+import { Raf } from './raf';
+import { RenderStats } from './render_stats';
+import { Scene } from './scene';
 
 export class World {
   private renderer: THREE.WebGLRenderer;

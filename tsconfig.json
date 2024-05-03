@@ -23,11 +23,6 @@
 
     /* Paths */
     "baseUrl": ".",
-    "paths": {
-      "@core/*": ["src/core/*"],
-      "@ui/*": ["src/ui/*"],
-      "@assets/*": ["src/assets/*"]
-    }
   },
   "include": ["src"]
 }

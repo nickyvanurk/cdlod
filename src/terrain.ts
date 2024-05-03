@@ -39,7 +39,7 @@ export class Terrain extends THREE.Group {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
-        heightmap: { value: textureLoader.load('./src/core/heightmap.png') },
+        heightmap: { value: textureLoader.load('./src/heightmap.png') },
         enableLodColors: { value: false },
       },
       vertexShader: gridVertexShader,
