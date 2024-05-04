@@ -11,10 +11,12 @@ export class Terrain extends THREE.Group {
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
 
+  private aabbHelpers = new THREE.Group();
+
   constructor(heightData: Float32Array, texture: THREE.Texture) {
     super();
 
-    const MAX_INSTANCES = 2000;
+    const MAX_INSTANCES = 500;
 
     this.tree = new QuadTree(0, 0, 2048);
 
@@ -54,10 +56,24 @@ export class Terrain extends THREE.Group {
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
     this.add(this.grid);
+
+    this.add(this.aabbHelpers);
+    for (let i = 0; i < MAX_INSTANCES; i++) {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const edges = new THREE.EdgesGeometry(geo);
+      const aabb = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xff0000 }));
+      aabb.material.depthTest = false;
+      aabb.visible = false;
+      this.aabbHelpers.add(aabb);
+    }
   }
 
   update(eye: THREE.Vector3, frustum: THREE.Frustum) {
     const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
+
+    for (const helper of this.aabbHelpers.children) {
+      helper.visible = false;
+    }
 
     const selectedNodes: { node: QuadTree; level: number }[] = [];
     this.tree.selectNodes(eye, [...this.lodRanges].reverse(), 4, frustum, (node, level) => {
@@ -73,6 +89,10 @@ export class Terrain extends THREE.Group {
           new THREE.Vector3(obj.node.halfSize * 2, 1, obj.node.halfSize * 2)
         )
       );
+
+      this.aabbHelpers.children[idx].position.set(obj.node.x, 0, obj.node.y);
+      this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, 1, obj.node.halfSize * 2);
+      this.aabbHelpers.children[idx].visible = true;
 
       lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
     }
