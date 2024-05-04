@@ -22,14 +22,22 @@ document.body.appendChild(stats.domElement);
 
 window.addEventListener('resize', handleResize.bind(this), false);
 
-const gui = new GUI();
-
-const terrain = new Terrain(gui);
+const terrain = new Terrain();
 const scene = new THREE.Scene();
 scene.add(terrain);
 
 const frustum = new THREE.Frustum();
 const mat4 = new THREE.Matrix4();
+
+const gui = new GUI();
+gui
+  .add(terrain.material, 'wireframe')
+  .name('Wireframe')
+  .onChange((visible: boolean) => (terrain.material.wireframe = visible));
+gui
+  .add(terrain.material.uniforms.enableLodColors, 'value')
+  .name('LOD Colors')
+  .onChange((enable: boolean) => (terrain.material.uniforms.enableLodColors.value = enable));
 
 requestAnimationFrame(render);
 

@@ -1,4 +1,3 @@
-import type GUI from 'lil-gui';
 import * as THREE from 'three';
 
 import gridFragmentShader from './grid.fs';
@@ -6,11 +5,13 @@ import gridVertexShader from './grid.vs';
 import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
+  material: THREE.ShaderMaterial;
+
   private lodRanges: number[] = [];
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
 
-  constructor(gui: GUI) {
+  constructor() {
     super();
 
     const MAX_INSTANCES = 2000;
@@ -32,7 +33,7 @@ export class Terrain extends THREE.Group {
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
     geometry.setAttribute('lodLevel', lodLevelAttribute);
 
-    const shaderConfig = {
+    const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
@@ -44,17 +45,8 @@ export class Terrain extends THREE.Group {
       vertexShader: gridVertexShader,
       fragmentShader: gridFragmentShader,
       wireframe: false,
-    };
-    const material = new THREE.ShaderMaterial(shaderConfig);
-
-    gui
-      .add(shaderConfig, 'wireframe')
-      .name('Wireframe')
-      .onChange((visible: boolean) => (material.wireframe = visible));
-    gui
-      .add(shaderConfig.uniforms.enableLodColors, 'value')
-      .name('LOD Colors')
-      .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
+    });
+    this.material = material;
 
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.grid.count = 1;
