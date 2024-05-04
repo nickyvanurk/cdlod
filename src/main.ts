@@ -4,7 +4,6 @@ import * as THREE from 'three';
 // @ts-ignore
 import { MapControls } from 'three/addons/controls/MapControls';
 
-import { Raf } from './raf';
 import { Stats } from './stats';
 import { Terrain } from './terrain';
 
@@ -23,9 +22,6 @@ document.body.appendChild(stats.domElement);
 
 window.addEventListener('resize', handleResize.bind(this), false);
 
-Raf.add(render.bind(this));
-Raf.pause = false;
-
 const gui = new GUI();
 
 const terrain = new Terrain(gui);
@@ -35,7 +31,11 @@ scene.add(terrain);
 const frustum = new THREE.Frustum();
 const mat4 = new THREE.Matrix4();
 
+requestAnimationFrame(render);
+
 function render() {
+  requestAnimationFrame(render);
+
   const startTime = performance.now();
 
   frustum.setFromProjectionMatrix(mat4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
