@@ -40,7 +40,7 @@ void main() {
 
   vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 1025.0) / 2050.0;
 
-  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * 100.0;
+  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * 2600.0;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }
