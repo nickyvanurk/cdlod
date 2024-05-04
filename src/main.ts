@@ -18,7 +18,10 @@ const controls = new MapControls(camera, renderer.domElement);
 const stats = new Stats(renderer);
 document.body.appendChild(stats.domElement);
 
-const terrain = new Terrain();
+const heightData = await loadHeightmap('./src/heightmap.raw');
+const texture = await loadTexture('./src/texture.png');
+
+const terrain = new Terrain(heightData, texture);
 const scene = new THREE.Scene();
 scene.add(terrain);
 
@@ -59,4 +62,25 @@ function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+async function loadHeightmap(src: string, width = 4096, height = 4096) {
+  const size = width * height;
+  const buffer = new Float32Array(size);
+  const fileLoader = new THREE.FileLoader();
+  fileLoader.setResponseType('arraybuffer');
+  const data = (await fileLoader.loadAsync(src)) as ArrayBuffer;
+  const srcBuffer = new Uint16Array(data);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const revIdx = (height - y - 1) * width + x;
+      buffer[y * width + x] = srcBuffer[revIdx] / 65535;
+    }
+  }
+  return buffer;
+}
+
+async function loadTexture(src: string) {
+  const textureLoader = new THREE.TextureLoader();
+  return await textureLoader.loadAsync(src);
 }

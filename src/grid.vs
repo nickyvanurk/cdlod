@@ -38,7 +38,7 @@ void main() {
 
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
 
-  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 1025.0) / 2050.0;
+  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 2049.0) / 4098.0;
 
   morphedWorldPos.y = (texture2D(heightmap, vUv).r) * 2600.0 - 700.0;
 

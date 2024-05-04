@@ -11,14 +11,14 @@ export class Terrain extends THREE.Group {
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
 
-  constructor() {
+  constructor(heightData: Float32Array, texture: THREE.Texture) {
     super();
 
     const MAX_INSTANCES = 2000;
 
-    this.tree = new QuadTree(0, 0, 1024);
+    this.tree = new QuadTree(0, 0, 2048);
 
-    const minLodDistance = 128;
+    const minLodDistance = 256;
     const lodLevels = 4;
     for (let i = 0; i <= lodLevels; i++) {
       this.lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
@@ -33,13 +33,16 @@ export class Terrain extends THREE.Group {
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
     geometry.setAttribute('lodLevel', lodLevelAttribute);
 
+    const heightmap = new THREE.DataTexture(heightData, 4096, 4096, THREE.RedFormat, THREE.FloatType);
+    heightmap.needsUpdate = true;
+
     const material = new THREE.ShaderMaterial({
       uniforms: {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
-        heightmap: { value: loadHeightmap('./src/heightmap.raw') },
-        albedomap: { value: loadTexture('./src/texture.png') },
+        heightmap: { value: heightmap },
+        albedomap: { value: texture },
         enableLodColors: { value: false },
       },
       vertexShader: gridVertexShader,
@@ -78,28 +81,4 @@ export class Terrain extends THREE.Group {
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }
-}
-
-function loadHeightmap(src: string, width = 4096, height = 4096) {
-  const size = width * height;
-  const buffer = new Float32Array(size);
-  const dataTex = new THREE.DataTexture(buffer, width, height, THREE.RedFormat, THREE.FloatType);
-  const fileLoader = new THREE.FileLoader();
-  fileLoader.setResponseType('arraybuffer');
-  fileLoader.load(src, (data) => {
-    const srcBuffer = new Uint16Array(data as ArrayBuffer);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const revIdx = (height - y - 1) * width + x;
-        buffer[y * width + x] = srcBuffer[revIdx] / 65535;
-      }
-    }
-    dataTex.needsUpdate = true;
-  });
-  return dataTex;
-}
-
-function loadTexture(src: string) {
-  const textureLoader = new THREE.TextureLoader();
-  return textureLoader.load(src);
 }
