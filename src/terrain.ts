@@ -25,12 +25,30 @@ export class Terrain extends THREE.Group {
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
 
-    const sectorSize = 128;
+    const sectorSize = 64;
     const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
     const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
     geometry.setAttribute('lodLevel', lodLevelAttribute);
+
+    const width = 4096;
+    const height = 4096;
+    const size = width * height;
+    const heightmap = new Float32Array(size);
+    const heightmapDataTexture = new THREE.DataTexture(heightmap, width, height, THREE.RedFormat, THREE.FloatType);
+    const loader = new THREE.FileLoader();
+    loader.setResponseType('arraybuffer');
+    loader.load('./src/heightmap.raw', (data) => {
+      const buffer = new Uint16Array(data as ArrayBuffer);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const revIdx = (height - y - 1) * width + x;
+          heightmap[y * width + x] = buffer[revIdx] / 65535;
+        }
+      }
+      heightmapDataTexture.needsUpdate = true;
+    });
 
     const textureLoader = new THREE.TextureLoader();
 
@@ -39,7 +57,7 @@ export class Terrain extends THREE.Group {
         sectorSize: { value: sectorSize },
         lodRanges: { value: this.lodRanges },
         colors: { value: colors },
-        heightmap: { value: textureLoader.load('./src/heightmap.png') },
+        heightmap: { value: heightmapDataTexture },
         albedomap: { value: textureLoader.load('./src/texture.png') },
         enableLodColors: { value: false },
       },

@@ -12,11 +12,13 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const camera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-camera.position.y = 1500;
-camera.lookAt(new THREE.Vector3());
+camera.position.y = 1800;
+camera.position.x = 1100;
 
 const controls = new MapControls(camera, renderer.domElement);
 const scene = new Scene(camera);
+
+controls.position0.set(-1000, 0, 0);
 
 const stats = new Stats(renderer);
 document.body.appendChild(stats.domElement);
