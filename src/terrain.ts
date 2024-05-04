@@ -13,7 +13,10 @@ export class Terrain extends THREE.Group {
 
   private aabbHelpers = new THREE.Group();
 
-  constructor(heightData: Float32Array, texture: THREE.Texture) {
+  constructor(
+    private heightData: Float32Array,
+    texture: THREE.Texture
+  ) {
     super();
 
     const MAX_INSTANCES = 500;
@@ -90,15 +93,31 @@ export class Terrain extends THREE.Group {
         )
       );
 
-      this.aabbHelpers.children[idx].position.set(obj.node.x, 0, obj.node.y);
-      this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, 1, obj.node.halfSize * 2);
-      this.aabbHelpers.children[idx].visible = true;
-
       lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
+
+      const tileHeight = getTileHeight(this.heightData, 2047 + obj.node.x, 2047 - obj.node.y, obj.node.halfSize);
+      const yPos = (tileHeight.min + tileHeight.max) / 2;
+      const yScale = tileHeight.max - tileHeight.min;
+      this.aabbHelpers.children[idx].position.set(obj.node.x, yPos, obj.node.y);
+      this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, yScale, obj.node.halfSize * 2);
+      this.aabbHelpers.children[idx].visible = true;
     }
 
     lodLevelAttribute.needsUpdate = true;
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }
+}
+
+function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
+  const width = 4096;
+  const xHalf = halfWidth - 1;
+  const yHalf = halfHeight - 1;
+  const c1 = data[(y - yHalf) * width + (x - xHalf)];
+  const c2 = data[(y - yHalf) * width + (x + xHalf)];
+  const c3 = data[(y + yHalf) * width + (x - xHalf)];
+  const c4 = data[(y + yHalf) * width + (x + xHalf)];
+  const min = (Math.min(c1, c2, c3, c4) || 0) * 2600 - 700;
+  const max = (Math.max(c1, c2, c3, c4) || 0) * 2600 - 700;
+  return { min, max };
 }
