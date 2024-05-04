@@ -13,15 +13,12 @@ export class Terrain extends THREE.Group {
 
   private aabbHelpers = new THREE.Group();
 
-  constructor(
-    private heightData: Float32Array,
-    texture: THREE.Texture
-  ) {
+  constructor(heightData: Float32Array, texture: THREE.Texture) {
     super();
 
     const MAX_INSTANCES = 500;
 
-    this.tree = new QuadTree(0, 0, 2048);
+    this.tree = new QuadTree(0, 0, 2048, 0, heightData);
 
     const minLodDistance = 256;
     const lodLevels = 4;
@@ -57,6 +54,7 @@ export class Terrain extends THREE.Group {
     this.material = material;
 
     this.grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
+    this.grid.frustumCulled = false;
     this.grid.count = 1;
     this.add(this.grid);
 
@@ -95,9 +93,8 @@ export class Terrain extends THREE.Group {
 
       lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
 
-      const tileHeight = getTileHeight(this.heightData, 2047 + obj.node.x, 2047 - obj.node.y, obj.node.halfSize);
-      const yPos = (tileHeight.min + tileHeight.max) / 2;
-      const yScale = tileHeight.max - tileHeight.min;
+      const yPos = (obj.node.min + obj.node.max) * 0.5;
+      const yScale = obj.node.max - obj.node.min;
       this.aabbHelpers.children[idx].position.set(obj.node.x, yPos, obj.node.y);
       this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, yScale, obj.node.halfSize * 2);
       this.aabbHelpers.children[idx].visible = true;
@@ -107,17 +104,4 @@ export class Terrain extends THREE.Group {
     this.grid.count = selectedNodes.length;
     this.grid.instanceMatrix.needsUpdate = true;
   }
-}
-
-function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
-  const width = 4096;
-  const xHalf = halfWidth - 1;
-  const yHalf = halfHeight - 1;
-  const c1 = data[(y - yHalf) * width + (x - xHalf)];
-  const c2 = data[(y - yHalf) * width + (x + xHalf)];
-  const c3 = data[(y + yHalf) * width + (x - xHalf)];
-  const c4 = data[(y + yHalf) * width + (x + xHalf)];
-  const min = (Math.min(c1, c2, c3, c4) || 0) * 2600 - 700;
-  const max = (Math.max(c1, c2, c3, c4) || 0) * 2600 - 700;
-  return { min, max };
 }
