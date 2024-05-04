@@ -25,7 +25,7 @@ export class Terrain extends THREE.Group {
 
     const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
 
-    const sectorSize = 64;
+    const sectorSize = 128;
     const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
     geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
