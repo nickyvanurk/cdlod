@@ -1,8 +1,6 @@
 import GUI from 'lil-gui';
 import * as THREE from 'three';
-// eslint-disable-next-line
-// @ts-ignore
-import { MapControls } from 'three/addons/controls/MapControls';
+import { MapControls } from 'three/examples/jsm/controls/MapControls';
 
 import { Stats } from './stats';
 import { Terrain } from './terrain';
@@ -19,8 +17,6 @@ const controls = new MapControls(camera, renderer.domElement);
 
 const stats = new Stats(renderer);
 document.body.appendChild(stats.domElement);
-
-window.addEventListener('resize', handleResize.bind(this), false);
 
 const terrain = new Terrain();
 const scene = new THREE.Scene();
@@ -56,6 +52,8 @@ function render() {
   controls.update();
   renderer.render(scene, camera);
 }
+
+window.addEventListener('resize', handleResize.bind(this), false);
 
 function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
