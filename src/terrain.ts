@@ -6,12 +6,11 @@ import { Node as QuadTree } from './quad_tree';
 
 export class Terrain extends THREE.Group {
   material: THREE.ShaderMaterial;
+  aabbHelpers = new THREE.Group();
 
   private lodRanges: number[] = [];
   private tree: QuadTree;
   private grid: THREE.InstancedMesh;
-
-  private aabbHelpers = new THREE.Group();
 
   constructor(heightData: Float32Array, texture: THREE.Texture) {
     super();
@@ -58,6 +57,7 @@ export class Terrain extends THREE.Group {
     this.grid.count = 1;
     this.add(this.grid);
 
+    this.aabbHelpers.visible = false;
     this.add(this.aabbHelpers);
     for (let i = 0; i < MAX_INSTANCES; i++) {
       const geo = new THREE.BoxGeometry(1, 1, 1);
@@ -72,8 +72,10 @@ export class Terrain extends THREE.Group {
   update(eye: THREE.Vector3, frustum: THREE.Frustum) {
     const lodLevelAttribute = this.grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
 
-    for (const helper of this.aabbHelpers.children) {
-      helper.visible = false;
+    if (this.aabbHelpers.visible) {
+      for (const helper of this.aabbHelpers.children) {
+        helper.visible = false;
+      }
     }
 
     const selectedNodes: { node: QuadTree; level: number }[] = [];
@@ -93,11 +95,13 @@ export class Terrain extends THREE.Group {
 
       lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
 
-      const yPos = (obj.node.min + obj.node.max) * 0.5;
-      const yScale = obj.node.max - obj.node.min;
-      this.aabbHelpers.children[idx].position.set(obj.node.x, yPos, obj.node.y);
-      this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, yScale, obj.node.halfSize * 2);
-      this.aabbHelpers.children[idx].visible = true;
+      if (this.aabbHelpers.visible) {
+        const yPos = (obj.node.min + obj.node.max) * 0.5;
+        const yScale = obj.node.max - obj.node.min;
+        this.aabbHelpers.children[idx].position.set(obj.node.x, yPos, obj.node.y);
+        this.aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, yScale, obj.node.halfSize * 2);
+        this.aabbHelpers.children[idx].visible = true;
+      }
     }
 
     lodLevelAttribute.needsUpdate = true;

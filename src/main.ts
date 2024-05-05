@@ -37,6 +37,10 @@ gui
   .add(terrain.material.uniforms.enableLodColors, 'value')
   .name('LOD Colors')
   .onChange((enable: boolean) => (terrain.material.uniforms.enableLodColors.value = enable));
+gui
+  .add(terrain.aabbHelpers, 'visible')
+  .name('AABB')
+  .onChange((visible: boolean) => (terrain.aabbHelpers.visible = visible));
 
 requestAnimationFrame(render);
 
