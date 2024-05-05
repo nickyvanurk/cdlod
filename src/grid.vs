@@ -7,7 +7,7 @@ uniform sampler2D heightmap;
 
 attribute float lodLevel;
 
-varying float vLodLevel;
+flat varying int vLodLevel;
 varying vec2 vUv;
 
 float morphValue(float dist) {
@@ -28,7 +28,7 @@ vec2 morphVertex(vec2 vertex, vec2 mesh_pos, float morphValue) {
 
 void main() {
   // visualization: pass lod level for color tinting
-  vLodLevel = floor(lodLevel);
+  vLodLevel = int(floor(lodLevel));
 
   vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz;
 
