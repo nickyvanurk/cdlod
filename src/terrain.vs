@@ -4,6 +4,7 @@ precision mediump float;
 uniform float sectorSize;
 uniform float lodRanges[5];
 uniform sampler2D heightmap;
+uniform vec3 cameraPos;
 
 attribute float lodLevel;
 
@@ -32,7 +33,7 @@ void main() {
 
   // Get the correct height value from 2D morphed position
   vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz; // pos.y == 0
-  float dist = length(cameraPosition - worldPos);
+  float dist = length(cameraPos - worldPos);
   float morphK = morphValue(dist);
   vec2 morphedPos = morphVertex(position.xz, uv, morphK);
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
@@ -41,7 +42,7 @@ void main() {
 
   // Use it to calculate the final 3D morphed position
   worldPos = (instanceMatrix * vec4(position.x, morphedWorldPos.y, position.z, 1.0)).xyz;
-  dist = length(cameraPosition - worldPos);
+  dist = length(cameraPos - worldPos);
   morphK = morphValue(dist);
   morphedPos = morphVertex(position.xz, uv, morphK);
   morphedWorldPos.xz = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xz;

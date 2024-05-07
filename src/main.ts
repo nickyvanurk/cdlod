@@ -84,6 +84,7 @@ const material = new THREE.ShaderMaterial({
     heightmap: { value: heightmap },
     albedomap: { value: texture },
     enableLodColors: { value: false },
+    cameraPos: { value: camera1.position },
   },
   vertexShader: terrainVs,
   fragmentShader: terrainFs,
