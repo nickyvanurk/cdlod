@@ -11,13 +11,35 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-camera.position.y = 1800;
-camera.position.x = 1100;
+const scene = new THREE.Scene();
+
+const camera1 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+camera1.position.y = 1800;
+camera1.position.x = 1100;
+
+const camera2 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+camera2.position.y = 1800;
+camera2.position.x = 1100;
+
+let camera = camera1;
 
 const controls = new MapControls(camera, renderer.domElement);
 
-const scene = new THREE.Scene();
+const camera1Helper = new THREE.CameraHelper(camera1);
+camera1Helper.visible = false;
+scene.add(camera1Helper);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === '1') {
+    camera = camera1;
+    controls.object = camera1;
+    camera1Helper.visible = false;
+  } else if (e.key === '2') {
+    camera = camera2;
+    controls.object = camera2;
+    camera1Helper.visible = true;
+  }
+});
 
 const heightData = await loadHeightmap('./src/heightmap.raw');
 const texture = await loadTexture('./src/texture.png');
@@ -109,7 +131,7 @@ function render() {
 
   const startTime = performance.now();
 
-  frustum.setFromProjectionMatrix(mat4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  frustum.setFromProjectionMatrix(mat4.multiplyMatrices(camera1.projectionMatrix, camera1.matrixWorldInverse));
 
   const lodLevelAttribute = grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
 
@@ -120,7 +142,7 @@ function render() {
   }
 
   const selectedNodes: { node: QuadTree; level: number }[] = [];
-  tree.selectNodes(camera.position, [...lodRanges].reverse(), 4, frustum, (node, level) => {
+  tree.selectNodes(camera1.position, [...lodRanges].reverse(), 4, frustum, (node, level) => {
     selectedNodes.push({ node, level });
   });
 
