@@ -36,7 +36,13 @@ for (let i = 0; i <= lodLevels; i++) {
   lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
 }
 
-const colors = ['#33f55f', '#befc26', '#e6c12f', '#fc8e26', '#f23424'].map((c) => new THREE.Color(c));
+const colors = [
+  '#33f55f' /* green */,
+  '#befc26' /* lime */,
+  '#e6c12f' /* yellow */,
+  '#fc8e26' /* orange */,
+  '#f23424' /* red */,
+].map((c) => new THREE.Color(c));
 
 const sectorSize = 64;
 const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
