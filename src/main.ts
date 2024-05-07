@@ -2,10 +2,10 @@ import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls';
 
-import gridFragmentShader from './grid.fs';
-import gridVertexShader from './grid.vs';
 import { Node as QuadTree } from './quad_tree';
 import { Stats } from './stats';
+import terrainFs from './terrain.fs';
+import terrainVs from './terrain.vs';
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -63,8 +63,8 @@ const material = new THREE.ShaderMaterial({
     albedomap: { value: texture },
     enableLodColors: { value: false },
   },
-  vertexShader: gridVertexShader,
-  fragmentShader: gridFragmentShader,
+  vertexShader: terrainVs,
+  fragmentShader: terrainFs,
   wireframe: false,
 });
 
