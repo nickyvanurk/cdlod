@@ -41,15 +41,32 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+const tree = new QuadTree(0, 0, 2048);
+
 const heightData = await loadHeightmap('./src/heightmap.raw');
-const texture = await loadTexture('./src/texture.png');
 
-const frustum = new THREE.Frustum();
-const mat4 = new THREE.Matrix4();
+tree.traverse((node) => {
+  const tileHeight = getTileHeight(heightData, 2047 + node.x, 2047 - node.y, node.halfSize);
+  node.min = tileHeight.min;
+  node.max = tileHeight.max;
+  node.aabb.set(
+    new THREE.Vector3(node.x - node.halfSize, tileHeight.min, node.y - node.halfSize),
+    new THREE.Vector3(node.x + node.halfSize, tileHeight.max, node.y + node.halfSize)
+  );
+});
 
-const MAX_INSTANCES = 500;
-
-const tree = new QuadTree(0, 0, 2048, 0, heightData);
+function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
+  const width = 4096;
+  const xHalf = halfWidth - 1;
+  const yHalf = halfHeight - 1;
+  const c1 = data[(y - yHalf) * width + (x - xHalf)];
+  const c2 = data[(y - yHalf) * width + (x + xHalf)];
+  const c3 = data[(y + yHalf) * width + (x - xHalf)];
+  const c4 = data[(y + yHalf) * width + (x + xHalf)];
+  const min = (Math.min(c1, c2, c3, c4) || 0) * 2600 - 700;
+  const max = (Math.max(c1, c2, c3, c4) || 0) * 2600 - 700;
+  return { min, max };
+}
 
 const minLodDistance = 256;
 const lodLevels = 4;
@@ -70,11 +87,15 @@ const sectorSize = 64;
 const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
 geometry.rotateX(-Math.PI / 2); // flip to xz plane
 
+const MAX_INSTANCES = 500;
+
 const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
 geometry.setAttribute('lodLevel', lodLevelAttribute);
 
 const heightmap = new THREE.DataTexture(heightData, 4096, 4096, THREE.RedFormat, THREE.FloatType);
 heightmap.needsUpdate = true;
+
+const texture = await loadTexture('./src/texture.png');
 
 const material = new THREE.ShaderMaterial({
   uniforms: {
@@ -126,6 +147,9 @@ gui
   .onChange((visible: boolean) => (aabbHelpers.visible = visible));
 
 requestAnimationFrame(render);
+
+const frustum = new THREE.Frustum();
+const mat4 = new THREE.Matrix4();
 
 function render() {
   requestAnimationFrame(render);

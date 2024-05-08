@@ -13,24 +13,15 @@ export class Node {
     public x: number,
     public y: number,
     public halfSize: number,
-    public level = 0,
-    heightData: Float32Array
+    public level = 0
   ) {
     if (level < 5) {
       const subSize = halfSize / 2;
-      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1, heightData);
-      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1, heightData);
-      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1, heightData);
-      this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1, heightData);
+      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
+      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
+      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1);
+      this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1);
     }
-
-    const tileHeight = getTileHeight(heightData, 2047 + this.x, 2047 - this.y, this.halfSize);
-    this.min = tileHeight.min;
-    this.max = tileHeight.max;
-    this.aabb.set(
-      new THREE.Vector3(this.x - this.halfSize, tileHeight.min, this.y - this.halfSize),
-      new THREE.Vector3(this.x + this.halfSize, tileHeight.max, this.y + this.halfSize)
-    );
   }
 
   traverse(cb: (node: Node) => void) {
@@ -104,17 +95,4 @@ export class Node {
 
     return true;
   }
-}
-
-function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
-  const width = 4096;
-  const xHalf = halfWidth - 1;
-  const yHalf = halfHeight - 1;
-  const c1 = data[(y - yHalf) * width + (x - xHalf)];
-  const c2 = data[(y - yHalf) * width + (x + xHalf)];
-  const c3 = data[(y + yHalf) * width + (x - xHalf)];
-  const c4 = data[(y + yHalf) * width + (x + xHalf)];
-  const min = (Math.min(c1, c2, c3, c4) || 0) * 2600 - 700;
-  const max = (Math.max(c1, c2, c3, c4) || 0) * 2600 - 700;
-  return { min, max };
 }
