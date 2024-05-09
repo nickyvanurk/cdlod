@@ -7,6 +7,8 @@ import { Stats } from './stats';
 import terrainFs from './terrain.fs';
 import terrainVs from './terrain.vs';
 
+const maxTerrainHeight = 2600;
+
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -63,8 +65,8 @@ function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: numb
   const c2 = data[(y - yHalf) * width + (x + xHalf)];
   const c3 = data[(y + yHalf) * width + (x - xHalf)];
   const c4 = data[(y + yHalf) * width + (x + xHalf)];
-  const min = (Math.min(c1, c2, c3, c4) || 0) * 2600 - 700;
-  const max = (Math.max(c1, c2, c3, c4) || 0) * 2600 - 700;
+  const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight - 700;
+  const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight - 700;
   return { min, max };
 }
 
@@ -106,6 +108,7 @@ const material = new THREE.ShaderMaterial({
     albedomap: { value: texture },
     enableLodColors: { value: false },
     cameraPos: { value: camera1.position },
+    maxTerrainHeight: { value: maxTerrainHeight },
   },
   vertexShader: terrainVs,
   fragmentShader: terrainFs,
