@@ -65,8 +65,8 @@ function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: numb
   const c2 = data[(y - yHalf) * width + (x + xHalf)];
   const c3 = data[(y + yHalf) * width + (x - xHalf)];
   const c4 = data[(y + yHalf) * width + (x + xHalf)];
-  const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight - 700;
-  const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight - 700;
+  const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
+  const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
   return { min, max };
 }
 
@@ -148,6 +148,15 @@ gui
   .add(aabbHelpers, 'visible')
   .name('AABB')
   .onChange((visible: boolean) => (aabbHelpers.visible = visible));
+gui
+  .add(material.uniforms.maxTerrainHeight, 'value', 0, 5000)
+  .name('Max Height')
+  .onChange((value: number) =>
+    tree.traverse((node) => {
+      node.aabb.min.y = node.min * (value / maxTerrainHeight);
+      node.aabb.max.y = node.max * (value / maxTerrainHeight);
+    })
+  );
 
 requestAnimationFrame(render);
 
@@ -187,8 +196,8 @@ function render() {
     lodLevelAttribute.set(Float32Array.from([obj.level]), idx);
 
     if (aabbHelpers.visible) {
-      const yPos = (obj.node.min + obj.node.max) * 0.5;
-      const yScale = obj.node.max - obj.node.min;
+      const yPos = (obj.node.aabb.min.y + obj.node.aabb.max.y) * 0.5;
+      const yScale = obj.node.aabb.max.y - obj.node.aabb.min.y;
       aabbHelpers.children[idx].position.set(obj.node.x, yPos, obj.node.y);
       aabbHelpers.children[idx].scale.set(obj.node.halfSize * 2, yScale, obj.node.halfSize * 2);
       aabbHelpers.children[idx].visible = true;

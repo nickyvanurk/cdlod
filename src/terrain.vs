@@ -38,7 +38,7 @@ void main() {
   vec2 morphedPos = morphVertex(position.xz, uv, morphK);
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
   vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 2049.0) / 4098.0;
-  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight - 700.0;
+  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight;
 
   // Use it to calculate the final 3D morphed position
   worldPos = (instanceMatrix * vec4(position.x, morphedWorldPos.y, position.z, 1.0)).xyz;
@@ -47,7 +47,7 @@ void main() {
   morphedPos = morphVertex(position.xz, uv, morphK);
   morphedWorldPos.xz = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xz;
   vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 2049.0) / 4098.0;
-  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight - 700.0;
+  morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
 }
