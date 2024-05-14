@@ -11,9 +11,9 @@ const heightData = await loadHeightmap('./src/heightmap.raw');
 const texture = await loadTexture('./src/texture.png');
 
 let activeCamera: THREE.PerspectiveCamera;
-let camera1: THREE.PerspectiveCamera;
-let camera2: THREE.PerspectiveCamera;
-let camera1Helper: THREE.CameraHelper;
+let mainCamera: THREE.PerspectiveCamera;
+let debugCamera: THREE.PerspectiveCamera;
+let mainCameraHelper: THREE.CameraHelper;
 let renderer: THREE.WebGLRenderer;
 let scene: THREE.Scene;
 let controls: MapControls;
@@ -34,19 +34,19 @@ function init() {
 
   scene = new THREE.Scene();
 
-  camera1 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-  camera1.position.y = 1800;
-  camera1.position.x = 1100;
+  mainCamera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+  mainCamera.position.y = 1800;
+  mainCamera.position.x = 1100;
 
-  camera2 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-  camera2.position.y = 1800;
-  camera2.position.x = 1100;
+  debugCamera = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+  debugCamera.position.y = 1800;
+  debugCamera.position.x = 1100;
 
-  activeCamera = camera1;
+  activeCamera = mainCamera;
 
-  camera1Helper = new THREE.CameraHelper(camera1);
-  camera1Helper.visible = false;
-  scene.add(camera1Helper);
+  mainCameraHelper = new THREE.CameraHelper(mainCamera);
+  mainCameraHelper.visible = false;
+  scene.add(mainCameraHelper);
 
   tree = new QuadTree(0, 0, 2048);
 
@@ -108,7 +108,7 @@ function init() {
       heightmap: { value: heightmap },
       albedomap: { value: texture },
       enableLodColors: { value: false },
-      cameraPos: { value: camera1.position },
+      cameraPos: { value: mainCamera.position },
       maxTerrainHeight: { value: maxTerrainHeight },
     },
     vertexShader: terrainVs,
@@ -178,14 +178,14 @@ function onWindowResize() {
 function onKeyDown(event: KeyboardEvent) {
   switch (event.key) {
     case '1':
-      activeCamera = camera1;
+      activeCamera = mainCamera;
       controls.object = activeCamera;
-      camera1Helper.visible = false;
+      mainCameraHelper.visible = false;
       break;
     case '2':
-      activeCamera = camera2;
+      activeCamera = debugCamera;
       controls.object = activeCamera;
-      camera1Helper.visible = true;
+      mainCameraHelper.visible = true;
       break;
   }
 }
@@ -201,7 +201,7 @@ function animate() {
 }
 
 function render() {
-  frustum.setFromProjectionMatrix(mat4.multiplyMatrices(camera1.projectionMatrix, camera1.matrixWorldInverse));
+  frustum.setFromProjectionMatrix(mat4.multiplyMatrices(mainCamera.projectionMatrix, mainCamera.matrixWorldInverse));
 
   const lodLevelAttribute = grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
 
@@ -212,7 +212,7 @@ function render() {
   }
 
   const selectedNodes: { node: QuadTree; level: number }[] = [];
-  tree.selectNodes(camera1.position, [...lodRanges].reverse(), 4, frustum, (node, level) => {
+  tree.selectNodes(mainCamera.position, [...lodRanges].reverse(), 4, frustum, (node, level) => {
     selectedNodes.push({ node, level });
   });
 
