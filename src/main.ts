@@ -158,16 +158,24 @@ gui
     })
   );
 
-requestAnimationFrame(render);
-
 const frustum = new THREE.Frustum();
 const mat4 = new THREE.Matrix4();
 
-function render() {
-  requestAnimationFrame(render);
+animate();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  controls.update();
 
   const startTime = performance.now();
+  render();
+  const endTime = performance.now() - startTime;
 
+  stats.update(endTime);
+}
+
+function render() {
   frustum.setFromProjectionMatrix(mat4.multiplyMatrices(camera1.projectionMatrix, camera1.matrixWorldInverse));
 
   const lodLevelAttribute = grid.geometry.getAttribute('lodLevel') as THREE.InstancedBufferAttribute;
@@ -208,11 +216,6 @@ function render() {
   grid.count = selectedNodes.length;
   grid.instanceMatrix.needsUpdate = true;
 
-  const endTime = performance.now() - startTime;
-
-  stats.update(endTime);
-
-  controls.update();
   renderer.render(scene, camera);
 }
 
