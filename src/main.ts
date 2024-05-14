@@ -31,17 +31,30 @@ const camera1Helper = new THREE.CameraHelper(camera1);
 camera1Helper.visible = false;
 scene.add(camera1Helper);
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === '1') {
-    camera = camera1;
-    controls.object = camera1;
-    camera1Helper.visible = false;
-  } else if (e.key === '2') {
-    camera = camera2;
-    controls.object = camera2;
-    camera1Helper.visible = true;
+window.addEventListener('resize', onWindowResize);
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('keydown', onKeyDown);
+
+function onKeyDown(event: KeyboardEvent) {
+  switch (event.key) {
+    case '1':
+      camera = camera1;
+      controls.object = camera1;
+      camera1Helper.visible = false;
+      break;
+    case '2':
+      camera = camera2;
+      controls.object = camera2;
+      camera1Helper.visible = true;
+      break;
   }
-});
+}
 
 const tree = new QuadTree(0, 0, 2048);
 
@@ -215,14 +228,6 @@ function render() {
   grid.instanceMatrix.needsUpdate = true;
 
   renderer.render(scene, camera);
-}
-
-window.addEventListener('resize', handleResize.bind(this), false);
-
-function handleResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 async function loadHeightmap(src: string, width = 4096, height = 4096) {
