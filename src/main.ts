@@ -7,39 +7,173 @@ import { Stats } from './stats';
 import terrainFs from './terrain.fs';
 import terrainVs from './terrain.vs';
 
-const maxTerrainHeight = 2600;
+const heightData = await loadHeightmap('./src/heightmap.raw');
+const texture = await loadTexture('./src/texture.png');
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+let camera: THREE.PerspectiveCamera;
+let camera1: THREE.PerspectiveCamera;
+let camera2: THREE.PerspectiveCamera;
+let camera1Helper: THREE.CameraHelper;
+let renderer: THREE.WebGLRenderer;
+let scene: THREE.Scene;
+let controls: MapControls;
+let stats: Stats;
+let tree: QuadTree;
+let lodRanges: number[];
+let aabbHelpers: THREE.Group;
+let grid: THREE.InstancedMesh;
 
-const scene = new THREE.Scene();
+const frustum = new THREE.Frustum();
+const mat4 = new THREE.Matrix4();
 
-const camera1 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-camera1.position.y = 1800;
-camera1.position.x = 1100;
+init();
+animate();
 
-const camera2 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
-camera2.position.y = 1800;
-camera2.position.x = 1100;
+function init() {
+  const maxTerrainHeight = 2600;
 
-let camera = camera1;
+  scene = new THREE.Scene();
 
-const controls = new MapControls(camera, renderer.domElement);
+  camera1 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+  camera1.position.y = 1800;
+  camera1.position.x = 1100;
 
-const camera1Helper = new THREE.CameraHelper(camera1);
-camera1Helper.visible = false;
-scene.add(camera1Helper);
+  camera2 = new THREE.PerspectiveCamera(71, window.innerWidth / window.innerHeight, 0.1, 10000);
+  camera2.position.y = 1800;
+  camera2.position.x = 1100;
 
-window.addEventListener('resize', onWindowResize);
+  camera = camera1;
+
+  camera1Helper = new THREE.CameraHelper(camera1);
+  camera1Helper.visible = false;
+  scene.add(camera1Helper);
+
+  tree = new QuadTree(0, 0, 2048);
+
+  tree.traverse((node) => {
+    const tileHeight = getTileHeight(heightData, 2047 + node.x, 2047 - node.y, node.halfSize);
+    node.min = tileHeight.min;
+    node.max = tileHeight.max;
+    node.aabb.set(
+      new THREE.Vector3(node.x - node.halfSize, tileHeight.min, node.y - node.halfSize),
+      new THREE.Vector3(node.x + node.halfSize, tileHeight.max, node.y + node.halfSize)
+    );
+  });
+
+  function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
+    const width = 4096;
+    const xHalf = halfWidth - 1;
+    const yHalf = halfHeight - 1;
+    const c1 = data[(y - yHalf) * width + (x - xHalf)];
+    const c2 = data[(y - yHalf) * width + (x + xHalf)];
+    const c3 = data[(y + yHalf) * width + (x - xHalf)];
+    const c4 = data[(y + yHalf) * width + (x + xHalf)];
+    const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
+    const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
+    return { min, max };
+  }
+
+  const minLodDistance = 256;
+  const lodLevels = 4;
+  lodRanges = [] as number[];
+  for (let i = 0; i <= lodLevels; i++) {
+    lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
+  }
+
+  const colors = [
+    '#33f55f' /* green */,
+    '#befc26' /* lime */,
+    '#e6c12f' /* yellow */,
+    '#fc8e26' /* orange */,
+    '#f23424' /* red */,
+  ].map((c) => new THREE.Color(c));
+
+  const sectorSize = 64;
+  const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
+  geometry.rotateX(-Math.PI / 2); // flip to xz plane
+
+  const MAX_INSTANCES = 500;
+
+  const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
+  geometry.setAttribute('lodLevel', lodLevelAttribute);
+
+  const heightmap = new THREE.DataTexture(heightData, 4096, 4096, THREE.RedFormat, THREE.FloatType);
+  heightmap.needsUpdate = true;
+
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      sectorSize: { value: sectorSize },
+      lodRanges: { value: lodRanges },
+      colors: { value: colors },
+      heightmap: { value: heightmap },
+      albedomap: { value: texture },
+      enableLodColors: { value: false },
+      cameraPos: { value: camera1.position },
+      maxTerrainHeight: { value: maxTerrainHeight },
+    },
+    vertexShader: terrainVs,
+    fragmentShader: terrainFs,
+    wireframe: false,
+  });
+
+  grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
+  grid.frustumCulled = false;
+  grid.count = 1;
+  scene.add(grid);
+
+  aabbHelpers = new THREE.Group();
+  aabbHelpers.visible = false;
+  scene.add(aabbHelpers);
+  for (let i = 0; i < MAX_INSTANCES; i++) {
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const edges = new THREE.EdgesGeometry(geo);
+    const aabb = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xff0000 }));
+    aabb.material.depthTest = false;
+    aabb.visible = false;
+    aabbHelpers.add(aabb);
+  }
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new MapControls(camera, renderer.domElement);
+
+  stats = new Stats(renderer);
+  document.body.appendChild(stats.domElement);
+
+  const gui = new GUI();
+  gui
+    .add(material, 'wireframe')
+    .name('Wireframe')
+    .onChange((visible: boolean) => (material.wireframe = visible));
+  gui
+    .add(material.uniforms.enableLodColors, 'value')
+    .name('LOD Colors')
+    .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
+  gui
+    .add(aabbHelpers, 'visible')
+    .name('AABB')
+    .onChange((visible: boolean) => (aabbHelpers.visible = visible));
+  gui
+    .add(material.uniforms.maxTerrainHeight, 'value', 0, 5000)
+    .name('Max Height')
+    .onChange((value: number) =>
+      tree.traverse((node) => {
+        node.aabb.min.y = node.min * (value / maxTerrainHeight);
+        node.aabb.max.y = node.max * (value / maxTerrainHeight);
+      })
+    );
+
+  window.addEventListener('resize', onWindowResize);
+  window.addEventListener('keydown', onKeyDown);
+}
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
-
-window.addEventListener('keydown', onKeyDown);
 
 function onKeyDown(event: KeyboardEvent) {
   switch (event.key) {
@@ -55,126 +189,6 @@ function onKeyDown(event: KeyboardEvent) {
       break;
   }
 }
-
-const tree = new QuadTree(0, 0, 2048);
-
-const heightData = await loadHeightmap('./src/heightmap.raw');
-
-tree.traverse((node) => {
-  const tileHeight = getTileHeight(heightData, 2047 + node.x, 2047 - node.y, node.halfSize);
-  node.min = tileHeight.min;
-  node.max = tileHeight.max;
-  node.aabb.set(
-    new THREE.Vector3(node.x - node.halfSize, tileHeight.min, node.y - node.halfSize),
-    new THREE.Vector3(node.x + node.halfSize, tileHeight.max, node.y + node.halfSize)
-  );
-});
-
-function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
-  const width = 4096;
-  const xHalf = halfWidth - 1;
-  const yHalf = halfHeight - 1;
-  const c1 = data[(y - yHalf) * width + (x - xHalf)];
-  const c2 = data[(y - yHalf) * width + (x + xHalf)];
-  const c3 = data[(y + yHalf) * width + (x - xHalf)];
-  const c4 = data[(y + yHalf) * width + (x + xHalf)];
-  const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
-  const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
-  return { min, max };
-}
-
-const minLodDistance = 256;
-const lodLevels = 4;
-const lodRanges = [] as number[];
-for (let i = 0; i <= lodLevels; i++) {
-  lodRanges[i] = minLodDistance * Math.pow(2, 1 + lodLevels - i);
-}
-
-const colors = [
-  '#33f55f' /* green */,
-  '#befc26' /* lime */,
-  '#e6c12f' /* yellow */,
-  '#fc8e26' /* orange */,
-  '#f23424' /* red */,
-].map((c) => new THREE.Color(c));
-
-const sectorSize = 64;
-const geometry = new THREE.PlaneGeometry(1, 1, sectorSize, sectorSize);
-geometry.rotateX(-Math.PI / 2); // flip to xz plane
-
-const MAX_INSTANCES = 500;
-
-const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
-geometry.setAttribute('lodLevel', lodLevelAttribute);
-
-const heightmap = new THREE.DataTexture(heightData, 4096, 4096, THREE.RedFormat, THREE.FloatType);
-heightmap.needsUpdate = true;
-
-const texture = await loadTexture('./src/texture.png');
-
-const material = new THREE.ShaderMaterial({
-  uniforms: {
-    sectorSize: { value: sectorSize },
-    lodRanges: { value: lodRanges },
-    colors: { value: colors },
-    heightmap: { value: heightmap },
-    albedomap: { value: texture },
-    enableLodColors: { value: false },
-    cameraPos: { value: camera1.position },
-    maxTerrainHeight: { value: maxTerrainHeight },
-  },
-  vertexShader: terrainVs,
-  fragmentShader: terrainFs,
-  wireframe: false,
-});
-
-const grid = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
-grid.frustumCulled = false;
-grid.count = 1;
-scene.add(grid);
-
-const aabbHelpers = new THREE.Group();
-aabbHelpers.visible = false;
-scene.add(aabbHelpers);
-for (let i = 0; i < MAX_INSTANCES; i++) {
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const edges = new THREE.EdgesGeometry(geo);
-  const aabb = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xff0000 }));
-  aabb.material.depthTest = false;
-  aabb.visible = false;
-  aabbHelpers.add(aabb);
-}
-
-const stats = new Stats(renderer);
-document.body.appendChild(stats.domElement);
-
-const gui = new GUI();
-gui
-  .add(material, 'wireframe')
-  .name('Wireframe')
-  .onChange((visible: boolean) => (material.wireframe = visible));
-gui
-  .add(material.uniforms.enableLodColors, 'value')
-  .name('LOD Colors')
-  .onChange((enable: boolean) => (material.uniforms.enableLodColors.value = enable));
-gui
-  .add(aabbHelpers, 'visible')
-  .name('AABB')
-  .onChange((visible: boolean) => (aabbHelpers.visible = visible));
-gui
-  .add(material.uniforms.maxTerrainHeight, 'value', 0, 5000)
-  .name('Max Height')
-  .onChange((value: number) =>
-    tree.traverse((node) => {
-      node.aabb.min.y = node.min * (value / maxTerrainHeight);
-      node.aabb.max.y = node.max * (value / maxTerrainHeight);
-    })
-  );
-
-const frustum = new THREE.Frustum();
-const mat4 = new THREE.Matrix4();
-
-animate();
 
 function animate() {
   requestAnimationFrame(animate);
