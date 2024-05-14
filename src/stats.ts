@@ -7,6 +7,7 @@ export class Stats {
 
   private readonly stats = new ThreeStats();
   private readonly panels: ThreeStats.Panel[] = [];
+  private beginTime = 0;
 
   constructor(private readonly renderer: THREE.WebGLRenderer) {
     this.domElement.id = 'render-stats';
@@ -54,5 +55,14 @@ export class Stats {
     this.panels[4]?.update(this.renderer.info.render.points, 200000);
     this.panels[5]?.update(this.renderer.info.render.lines, 200000);
     this.panels[6]?.update(this.renderer.info.render.triangles, 200000);
+  }
+
+  begin() {
+    this.beginTime = performance.now();
+  }
+
+  end() {
+    const elapsedTime = performance.now() - this.beginTime;
+    this.update(elapsedTime);
   }
 }

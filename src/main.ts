@@ -168,11 +168,9 @@ function animate() {
 
   controls.update();
 
-  const startTime = performance.now();
+  stats.begin();
   render();
-  const endTime = performance.now() - startTime;
-
-  stats.update(endTime);
+  stats.end();
 }
 
 function render() {
