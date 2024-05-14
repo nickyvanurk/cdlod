@@ -51,27 +51,23 @@ function init() {
   tree = new QuadTree(0, 0, 2048);
 
   tree.traverse((node) => {
-    const tileHeight = getTileHeight(heightData, 2047 + node.x, 2047 - node.y, node.halfSize);
-    node.min = tileHeight.min;
-    node.max = tileHeight.max;
+    const x = 2047 + node.x;
+    const y = 2047 - node.y;
+    const xHalf = node.halfSize - 1;
+    const yHalf = node.halfSize - 1;
+    const c1 = heightData[(y - yHalf) * 4096 + (x - xHalf)];
+    const c2 = heightData[(y - yHalf) * 4096 + (x + xHalf)];
+    const c3 = heightData[(y + yHalf) * 4096 + (x - xHalf)];
+    const c4 = heightData[(y + yHalf) * 4096 + (x + xHalf)];
+
+    node.min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
+    node.max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
+
     node.aabb.set(
-      new THREE.Vector3(node.x - node.halfSize, tileHeight.min, node.y - node.halfSize),
-      new THREE.Vector3(node.x + node.halfSize, tileHeight.max, node.y + node.halfSize)
+      new THREE.Vector3(node.x - node.halfSize, node.min, node.y - node.halfSize),
+      new THREE.Vector3(node.x + node.halfSize, node.max, node.y + node.halfSize)
     );
   });
-
-  function getTileHeight(data: Float32Array, x: number, y: number, halfWidth: number, halfHeight = halfWidth) {
-    const width = 4096;
-    const xHalf = halfWidth - 1;
-    const yHalf = halfHeight - 1;
-    const c1 = data[(y - yHalf) * width + (x - xHalf)];
-    const c2 = data[(y - yHalf) * width + (x + xHalf)];
-    const c3 = data[(y + yHalf) * width + (x - xHalf)];
-    const c4 = data[(y + yHalf) * width + (x + xHalf)];
-    const min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
-    const max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
-    return { min, max };
-  }
 
   const minLodDistance = 256;
   const lodLevels = 4;
