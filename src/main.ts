@@ -10,7 +10,7 @@ import terrainVs from './terrain.vs';
 const heightData = await loadHeightmap('./src/heightmap.raw');
 const texture = await loadTexture('./src/texture.png');
 
-let camera: THREE.PerspectiveCamera;
+let activeCamera: THREE.PerspectiveCamera;
 let camera1: THREE.PerspectiveCamera;
 let camera2: THREE.PerspectiveCamera;
 let camera1Helper: THREE.CameraHelper;
@@ -42,7 +42,7 @@ function init() {
   camera2.position.y = 1800;
   camera2.position.x = 1100;
 
-  camera = camera1;
+  activeCamera = camera1;
 
   camera1Helper = new THREE.CameraHelper(camera1);
   camera1Helper.visible = false;
@@ -137,7 +137,7 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  controls = new MapControls(camera, renderer.domElement);
+  controls = new MapControls(activeCamera, renderer.domElement);
 
   stats = new Stats(renderer);
   document.body.appendChild(stats.domElement);
@@ -170,21 +170,21 @@ function init() {
 }
 
 function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  activeCamera.aspect = window.innerWidth / window.innerHeight;
+  activeCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function onKeyDown(event: KeyboardEvent) {
   switch (event.key) {
     case '1':
-      camera = camera1;
-      controls.object = camera1;
+      activeCamera = camera1;
+      controls.object = activeCamera;
       camera1Helper.visible = false;
       break;
     case '2':
-      camera = camera2;
-      controls.object = camera2;
+      activeCamera = camera2;
+      controls.object = activeCamera;
       camera1Helper.visible = true;
       break;
   }
@@ -241,7 +241,7 @@ function render() {
   grid.count = selectedNodes.length;
   grid.instanceMatrix.needsUpdate = true;
 
-  renderer.render(scene, camera);
+  renderer.render(scene, activeCamera);
 }
 
 async function loadHeightmap(src: string, width = 4096, height = 4096) {
