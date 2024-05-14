@@ -7,7 +7,9 @@ import { Stats } from './stats';
 import terrainFs from './terrain.fs';
 import terrainVs from './terrain.vs';
 
-const heightData = await loadHeightmap('./src/heightmap.raw');
+const heightmapSize = 4096;
+
+const heightData = await loadHeightmap('./src/heightmap.raw', heightmapSize);
 const texture = await loadTexture('./src/texture.png');
 
 let activeCamera: THREE.PerspectiveCamera;
@@ -31,6 +33,7 @@ animate();
 
 function init() {
   const maxTerrainHeight = 2600;
+  const mapSize = heightmapSize;
 
   scene = new THREE.Scene();
 
@@ -48,17 +51,17 @@ function init() {
   mainCameraHelper.visible = false;
   scene.add(mainCameraHelper);
 
-  tree = new QuadTree(0, 0, 2048);
+  tree = new QuadTree(0, 0, mapSize / 2);
 
   tree.traverse((node) => {
-    const x = 2047 + node.x;
-    const y = 2047 - node.y;
+    const x = heightmapSize / 2 - 1 + node.x;
+    const y = heightmapSize / 2 - 1 - node.y;
     const xHalf = node.halfSize - 1;
     const yHalf = node.halfSize - 1;
-    const c1 = heightData[(y - yHalf) * 4096 + (x - xHalf)];
-    const c2 = heightData[(y - yHalf) * 4096 + (x + xHalf)];
-    const c3 = heightData[(y + yHalf) * 4096 + (x - xHalf)];
-    const c4 = heightData[(y + yHalf) * 4096 + (x + xHalf)];
+    const c1 = heightData[(y - yHalf) * heightmapSize + (x - xHalf)];
+    const c2 = heightData[(y - yHalf) * heightmapSize + (x + xHalf)];
+    const c3 = heightData[(y + yHalf) * heightmapSize + (x - xHalf)];
+    const c4 = heightData[(y + yHalf) * heightmapSize + (x + xHalf)];
 
     node.min = (Math.min(c1, c2, c3, c4) || 0) * maxTerrainHeight;
     node.max = (Math.max(c1, c2, c3, c4) || 0) * maxTerrainHeight;
@@ -93,7 +96,7 @@ function init() {
   const lodLevelAttribute = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES), 1, false, 1);
   geometry.setAttribute('lodLevel', lodLevelAttribute);
 
-  const heightmap = new THREE.DataTexture(heightData, 4096, 4096, THREE.RedFormat, THREE.FloatType);
+  const heightmap = new THREE.DataTexture(heightData, heightmapSize, heightmapSize, THREE.RedFormat, THREE.FloatType);
   heightmap.needsUpdate = true;
 
   const material = new THREE.ShaderMaterial({
@@ -106,6 +109,7 @@ function init() {
       enableLodColors: { value: false },
       cameraPos: { value: mainCamera.position },
       maxTerrainHeight: { value: maxTerrainHeight },
+      mapSize: { value: mapSize },
     },
     vertexShader: terrainVs,
     fragmentShader: terrainFs,
@@ -240,7 +244,7 @@ function render() {
   renderer.render(scene, activeCamera);
 }
 
-async function loadHeightmap(src: string, width = 4096, height = 4096) {
+async function loadHeightmap(src: string, width = 4096, height = width) {
   const size = width * height;
   const buffer = new Float32Array(size);
   const fileLoader = new THREE.FileLoader();

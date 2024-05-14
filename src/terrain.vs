@@ -5,6 +5,7 @@ uniform float lodRanges[5];
 uniform sampler2D heightmap;
 uniform vec3 cameraPos;
 uniform float maxTerrainHeight;
+uniform float mapSize;
 
 attribute float lodLevel;
 
@@ -37,7 +38,7 @@ void main() {
   float morphK = morphValue(dist);
   vec2 morphedPos = morphVertex(position.xz, uv, morphK);
   vec3 morphedWorldPos = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xyz;
-  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 2049.0) / 4098.0;
+  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + (mapSize * 0.5 + 1.0)) / (mapSize + 2.0);
   morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight;
 
   // Use it to calculate the final 3D morphed position
@@ -46,7 +47,7 @@ void main() {
   morphK = morphValue(dist);
   morphedPos = morphVertex(position.xz, uv, morphK);
   morphedWorldPos.xz = (instanceMatrix * vec4(morphedPos.x, 0.0, morphedPos.y, 1.0)).xz;
-  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + 2049.0) / 4098.0;
+  vUv = (vec2(morphedWorldPos.x, -morphedWorldPos.z) + (mapSize * 0.5 + 1.0)) / (mapSize + 2.0);
   morphedWorldPos.y = (texture2D(heightmap, vUv).r) * maxTerrainHeight;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos, 1.0);
