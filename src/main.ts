@@ -9,8 +9,8 @@ import terrainVs from './terrain.vs';
 
 const heightmapSize = 4096;
 
-const heightData = await loadHeightmap('./src/heightmap.raw', heightmapSize);
-const texture = await loadTexture('./src/texture.png');
+const heightData = await loadHeightmap('/src/heightmap.raw', heightmapSize);
+const texture = await loadTexture('/src/texture.png');
 
 let activeCamera: THREE.PerspectiveCamera;
 let mainCamera: THREE.PerspectiveCamera;
