@@ -164,6 +164,10 @@ function init() {
         node.aabb.max.y = node.max * (value / maxTerrainHeight);
       })
     );
+  gui
+    .add({debugCamera: false}, 'debugCamera')
+    .name('Debug Camera')
+    .onChange((enable: boolean) => activateCamera(enable ? '2' : '1'));
 
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('keydown', onKeyDown);
@@ -176,7 +180,13 @@ function onWindowResize() {
 }
 
 function onKeyDown(event: KeyboardEvent) {
-  switch (event.key) {
+  if (event.key === '1' || event.key === '2') {
+    activateCamera(event.key);
+  }
+}
+
+function activateCamera(cameraId: string) {
+  switch (cameraId) {
     case '1':
       activeCamera = mainCamera;
       controls.object = activeCamera;
