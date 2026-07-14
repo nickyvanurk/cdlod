@@ -55,8 +55,31 @@ const BOUNDS_MARGIN = 0.06;
 /** How far above the ground the camera opens. */
 const CAMERA_HEIGHT = 420;
 
-/** Minimum gap kept between the camera and the ground when a new seed rebuilds under it. */
-const CAMERA_CLEARANCE = 60;
+/**
+ * Camera speed is derived from height above the terrain, not from distance to the orbit
+ * target.
+ *
+ * OrbitControls keys both gestures off |position - target|: pan multiplies the drag by it
+ * directly, and each scroll tick multiplies the orbit radius by 0.95^zoomSpeed, so the dolly
+ * step is proportional to it too. Over a map that is the wrong quantity -- pitch toward the
+ * horizon and the target slides kilometres away, so a camera hovering ten metres above the
+ * grass still pans and zooms in kilometre steps.
+ *
+ * Terrain viewers key off altitude instead: Cesium scales by height above the ellipsoid,
+ * Google Earth Studio calls it logarithmic altitude. Beyond preventing overshoot, this is
+ * what makes the ground read as ground -- at a fixed speed, near reference points sweep past
+ * faster than far ones, so the eye reads approach as acceleration. Slowing down in proportion
+ * cancels that, and the terrain gains a sense of size.
+ *
+ * Floor on altitude, so speed stays finite when parked on the surface.
+ */
+const CAMERA_MIN_ALTITUDE = 12;
+
+/** Metres panned per screen-height of drag, per metre of altitude. */
+const PAN_PER_ALTITUDE = 1.5;
+
+/** Fraction of the altitude covered by a single scroll tick. */
+const ZOOM_PER_ALTITUDE = 0.2;
 
 /** Seed the demo opens on. Any integer is a different world. */
 const INITIAL_SEED = 1337;
@@ -294,10 +317,51 @@ function animate() {
   requestAnimationFrame(animate);
 
   controls.update();
+  applyAltitudeFeel();
 
   stats.begin();
   render();
   stats.end();
+}
+
+/**
+ * Rescale the controls from the camera's height above the terrain, and keep it above ground.
+ *
+ * Runs after controls.update() so it sees the position the gesture just produced, and sets
+ * the rates the *next* gesture will use. See CAMERA_MIN_ALTITUDE for why altitude rather than
+ * orbit radius.
+ */
+function applyAltitudeFeel() {
+  // The live uniform, not the constant: the Max Height slider rescales the world, and reading
+  // the constant would leave the floor and the speeds keyed to terrain that is no longer there.
+  const heightScale = material.uniforms.maxTerrainHeight.value as number;
+  const groundY = bounds.sampleMax(mainCamera.position.x, mainCamera.position.z) * heightScale;
+
+  // Ground collision. Nudge the target with it, or the camera pivots about a point it can no
+  // longer reach and the orbit fights the floor.
+  const minY = groundY + CAMERA_MIN_ALTITUDE;
+  if (mainCamera.position.y < minY) {
+    controls.target.y += minY - mainCamera.position.y;
+    mainCamera.position.y = minY;
+  }
+
+  const altitude = Math.max(CAMERA_MIN_ALTITUDE, mainCamera.position.y - groundY);
+  const radius = Math.max(1, mainCamera.position.distanceTo(controls.target));
+
+  // Pan already gets multiplied by the orbit radius, so divide it back out and multiply by
+  // altitude instead. What lands in panLeft/panUp is then proportional to height.
+  controls.panSpeed = THREE.MathUtils.clamp((altitude * PAN_PER_ALTITUDE) / radius, 0.0005, 8);
+
+  // A tick scales the radius by 0.95^zoomSpeed, so its step is radius * (1 - 0.95^zoomSpeed).
+  // Solve that for the zoomSpeed whose step is a fixed fraction of altitude.
+  //
+  // These bounds only exist to keep the log defined and finite -- they are deliberately far
+  // wider than any real pose needs. Tighter ones look harmless and are not: low over the
+  // ground with the target on the horizon, radius is ~300x altitude, so the honest ratio sits
+  // at 0.9994 and anything that rounds it to 0.995 hands back an order of magnitude too much
+  // speed in exactly the case this function exists to fix.
+  const ratio = THREE.MathUtils.clamp(1 - (altitude * ZOOM_PER_ALTITUDE) / radius, 0.02, 0.99999);
+  controls.zoomSpeed = THREE.MathUtils.clamp(Math.log(ratio) / Math.log(0.95), 0.0002, 8);
 }
 
 function render() {
@@ -491,17 +555,7 @@ function regenerate(seed: number) {
   bounds.update(renderer);
   updateNodeBounds(tree, material.uniforms.maxTerrainHeight.value);
 
-  // The new world is built underneath a camera that has not moved, so the ground it was
-  // standing on may now be a mountainside. Inside the terrain, front faces cull away and the
-  // view collapses to slivers of whatever is beyond -- which reads as "regenerate broke it".
-  // Lift clear if that happened, but never push down: the camera keeps whatever height the
-  // user flew to.
-  const floorY = bounds.sampleMax(mainCamera.position.x, mainCamera.position.z) * maxTerrainHeight;
-  const minY = floorY + CAMERA_CLEARANCE;
-  if (mainCamera.position.y < minY) {
-    const lift = minY - mainCamera.position.y;
-    mainCamera.position.y += lift;
-    controls.target.y += lift;
-    controls.update();
-  }
+  // A new world can put a mountainside where the camera was standing, which would leave it
+  // inside the terrain looking at culled backfaces. applyAltitudeFeel lifts it clear on the
+  // next frame -- it enforces that floor continuously, so there is nothing to do here.
 }
