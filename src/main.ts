@@ -42,25 +42,28 @@ const sectorSize = 64;
 /**
  * Resolution of the CPU-side height grid used only for quadtree AABBs.
  *
- * Has to stay ahead of the quadtree: the finest node is MAP_SIZE / 2^LOD_LEVELS across, and a
+ * Has to out-resolve the quadtree: the finest node is MAP_SIZE / 2^LOD_LEVELS across, and a
  * node narrower than a couple of samples cannot be bounded from this grid at all -- its box
  * degenerates to its neighbourhood's, plus margin. At 16km and 8 levels the leaf is 64m, so
- * 1024 (16m per sample) gives four samples across it.
+ * 2048 (8m per sample) puts eight samples across it.
+ *
+ * bounds.fs packs height into RGBA8 rather than a float target, which is what keeps a grid
+ * this fine affordable: 16MB to read back instead of 64MB.
  */
-const BOUNDS_SIZE = 1024;
+const BOUNDS_SIZE = 2048;
 
 /**
  * AABB padding, as a fraction of the height range.
  *
  * Covers relief the grid cannot see *between* samples, so it is a property of the sample
  * spacing, not of the world. Summing each noise octave's contribution over a half-sample step
- * comes to roughly 25m at this spacing; this is ~2x that.
+ * comes to ~12m at this spacing; this is ~2x that.
  *
- * It applies to every node equally, so it sets a floor on how tall any box can be -- which is
- * why it cannot just be made generous. At 6% (156m per side) every box was at least 312m tall,
- * and the 64m leaves ended up as 5:1 columns stacked through each other.
+ * It applies to every node equally, so it sets a floor on how tall any box can be, which is
+ * why it cannot simply be made generous: at 6% (156m per side) every box was at least 312m
+ * tall, and the 64m leaves rendered as 5:1 columns stacked through each other.
  */
-const BOUNDS_MARGIN = 0.02;
+const BOUNDS_MARGIN = 0.01;
 
 /** How far above the ground the camera opens. */
 const CAMERA_HEIGHT = 420;
@@ -193,11 +196,6 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor('#9fb6c6');
   document.body.appendChild(renderer.domElement);
-
-  // The bounds probe reads back a float render target, which needs this extension.
-  if (!renderer.extensions.has('EXT_color_buffer_float')) {
-    console.warn('EXT_color_buffer_float unsupported: quadtree AABBs will be flat and culling ineffective.');
-  }
 
   // Bounds need the renderer, and the quadtree AABBs need the bounds, so both come after
   // the context exists.

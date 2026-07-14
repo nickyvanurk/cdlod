@@ -7,20 +7,21 @@ import boundsVs from './bounds.vs';
  * Samples the terrain height field into a CPU-readable grid over a square region.
  *
  * The terrain is analytic and lives in GLSL, so this evaluates it by rendering the same
- * terrain_common.glsl function into a float render target and reading it back, rather than
- * porting the noise to TypeScript. A port would be a second implementation of the same
- * maths that has to stay bit-compatible with the shader forever; the moment it drifts, the
- * results silently stop matching the geometry.
+ * terrain_common.glsl function into a render target and reading it back, rather than porting
+ * the noise to TypeScript. A port would be a second implementation of the same maths that has
+ * to stay bit-compatible with the shader forever; the moment it drifts, the results silently
+ * stop matching the geometry.
  *
- * Covers the whole map, giving quadtree nodes their AABB min/max. Costs a few milliseconds,
- * so it can be refreshed on demand -- regenerating on a new seed is effectively free.
+ * Covers the whole map, giving quadtree nodes their AABB min/max. Heights come back packed
+ * into RGBA8 (see bounds.fs), so it can be refreshed on demand -- regenerating on a new seed
+ * is effectively free.
  */
 export class TerrainBounds {
   private target: THREE.WebGLRenderTarget;
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private material: THREE.ShaderMaterial;
-  private pixels: Float32Array;
+  private pixels: Uint8Array;
 
   /** Normalized 0..1 heights, row-major. Row 0 is +z; see update() on why there is no flip. */
   readonly data: Float32Array;
@@ -33,8 +34,9 @@ export class TerrainBounds {
     public region: number,
     uniforms: Record<string, THREE.IUniform>
   ) {
+    // Byte target, not float: bounds.fs packs height into R+G at 16 bits. See there for why.
     this.target = new THREE.WebGLRenderTarget(size, size, {
-      type: THREE.FloatType,
+      type: THREE.UnsignedByteType,
       format: THREE.RGBAFormat,
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
@@ -52,8 +54,8 @@ export class TerrainBounds {
     });
     this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material));
 
-    // readRenderTargetPixels needs RGBA; only the red channel carries height.
-    this.pixels = new Float32Array(size * size * 4);
+    // readRenderTargetPixels needs RGBA; height is packed across R and G.
+    this.pixels = new Uint8Array(size * size * 4);
     this.data = new Float32Array(size * size);
   }
 
@@ -68,12 +70,14 @@ export class TerrainBounds {
     renderer.readRenderTargetPixels(this.target, 0, 0, this.size, this.size, this.pixels);
     renderer.setRenderTarget(prevTarget);
 
+    // Unpack R + G/255 back to 0..1, matching the pack in bounds.fs.
+    //
     // No row flip. readRenderTargetPixels returns row 0 = the bottom of the target = uv.y 0,
-    // which bounds.fs maps to +z -- the same place worldToTexel() puts row 0. Flipping here
+    // which bounds.fs maps to +z -- the same place gridFromWorld() puts row 0. Flipping here
     // mirrors the grid in Z against every lookup into it, which silently hands each quadtree
     // node the height bounds from the opposite side of the map.
     for (let i = 0; i < this.data.length; i++) {
-      this.data[i] = this.pixels[i * 4];
+      this.data[i] = (this.pixels[i * 4] + this.pixels[i * 4 + 1] / 255) / 255;
     }
   }
 
@@ -110,8 +114,8 @@ export class TerrainBounds {
   /**
    * Highest normalized height within `reach` samples of a world XZ.
    *
-   * Max, not nearest: on the whole-map grid the step is ~32m, so the real surface between
-   * two samples can sit well above either. A nearest lookup will place a camera inside a hill.
+   * Max, not nearest: the real surface between two samples can sit above both of them, so a
+   * nearest lookup will happily place a camera inside a hill.
    */
   sampleMax(x: number, z: number, reach = 2) {
     const { fx, fy } = this.gridFromWorld(x, z);
