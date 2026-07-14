@@ -40,17 +40,27 @@ const LOD_LEVELS = 8;
 const sectorSize = 64;
 
 /**
- * Resolution of the CPU-side height grid used only for quadtree AABBs. Coarse on purpose --
- * it is for culling, not display.
+ * Resolution of the CPU-side height grid used only for quadtree AABBs.
+ *
+ * Has to stay ahead of the quadtree: the finest node is MAP_SIZE / 2^LOD_LEVELS across, and a
+ * node narrower than a couple of samples cannot be bounded from this grid at all -- its box
+ * degenerates to its neighbourhood's, plus margin. At 16km and 8 levels the leaf is 64m, so
+ * 1024 (16m per sample) gives four samples across it.
  */
-const BOUNDS_SIZE = 512;
+const BOUNDS_SIZE = 1024;
 
 /**
- * Bounds are sampled every MAP_SIZE / BOUNDS_SIZE metres, so a peak between two samples can
- * exceed the sampled max. Pad the AABBs by this fraction of the height range rather than
- * let a real summit get culled while it is on screen.
+ * AABB padding, as a fraction of the height range.
+ *
+ * Covers relief the grid cannot see *between* samples, so it is a property of the sample
+ * spacing, not of the world. Summing each noise octave's contribution over a half-sample step
+ * comes to roughly 25m at this spacing; this is ~2x that.
+ *
+ * It applies to every node equally, so it sets a floor on how tall any box can be -- which is
+ * why it cannot just be made generous. At 6% (156m per side) every box was at least 312m tall,
+ * and the 64m leaves ended up as 5:1 columns stacked through each other.
  */
-const BOUNDS_MARGIN = 0.06;
+const BOUNDS_MARGIN = 0.02;
 
 /** How far above the ground the camera opens. */
 const CAMERA_HEIGHT = 420;
@@ -380,12 +390,14 @@ function computeNodeBounds(node: QuadTree) {
     const a = bounds.gridFromWorld(node.x - node.halfSize, node.y - node.halfSize);
     const b = bounds.gridFromWorld(node.x + node.halfSize, node.y + node.halfSize);
 
-    // Widen by a sample on every side. The finest nodes are smaller than one bounds texel,
-    // so an exact span can collapse to a single sample and miss the relief across the node.
-    const x0 = Math.floor(Math.min(a.fx, b.fx)) - 1;
-    const x1 = Math.ceil(Math.max(a.fx, b.fx)) + 1;
-    const y0 = Math.floor(Math.min(a.fy, b.fy)) - 1;
-    const y1 = Math.ceil(Math.max(a.fy, b.fy)) + 1;
+    // Every sample the node's span touches, and no more. Widening by an extra sample on each
+    // side sounds free but is not: it is a fixed number of *metres*, so on the finest nodes it
+    // doubles the ground the box has to cover and drags in neighbouring relief. Terrain
+    // between the node edge and the nearest sample is what BOUNDS_MARGIN is for.
+    const x0 = Math.floor(Math.min(a.fx, b.fx));
+    const x1 = Math.ceil(Math.max(a.fx, b.fx));
+    const y0 = Math.floor(Math.min(a.fy, b.fy));
+    const y1 = Math.ceil(Math.max(a.fy, b.fy));
 
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
