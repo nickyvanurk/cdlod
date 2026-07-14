@@ -55,6 +55,12 @@ const BOUNDS_MARGIN = 0.06;
 /** How far above the ground the camera opens. */
 const CAMERA_HEIGHT = 420;
 
+/** Minimum gap kept between the camera and the ground when a new seed rebuilds under it. */
+const CAMERA_CLEARANCE = 60;
+
+/** Seed the demo opens on. Any integer is a different world. */
+const INITIAL_SEED = 1337;
+
 /** Distance at which ground detail textures fade out to the flat band colour. */
 const DETAIL_FADE = 900;
 
@@ -125,7 +131,7 @@ function init() {
     maxTerrainHeight: { value: maxTerrainHeight },
     mapSize: { value: MAP_SIZE },
     seaLevel: { value: SEA_LEVEL },
-    seedOffset: { value: seedToOffset(1337) },
+    seedOffset: { value: seedToOffset(INITIAL_SEED) },
   };
 
   const fogColor = new THREE.Color('#9fb6c6');
@@ -225,9 +231,24 @@ function init() {
     .onChange((enable: boolean) => activateCamera(enable ? '2' : '1'));
 
   const terrainFolder = gui.addFolder('Terrain');
-  const terrainParams = { seed: 1337, regenerate: () => regenerate(terrainParams.seed) };
-  terrainFolder.add(terrainParams, 'seed').name('Seed').step(1);
-  terrainFolder.add(terrainParams, 'regenerate').name('Regenerate');
+  const terrainParams = {
+    seed: INITIAL_SEED,
+    regenerate: () => {
+      // Roll a new seed. Regenerating the *same* seed reproduces the same world down to the
+      // metre -- the field is a pure function of it -- so a button that reused the current
+      // seed looked broken: it did a full rebuild and the screen did not change.
+      terrainParams.seed = Math.floor(Math.random() * 100000);
+      seedController.updateDisplay();
+      regenerate(terrainParams.seed);
+    },
+  };
+  // Typing a seed applies it immediately; the button is for when you do not care which.
+  const seedController = terrainFolder
+    .add(terrainParams, 'seed')
+    .name('Seed')
+    .step(1)
+    .onFinishChange((value: number) => regenerate(value));
+  terrainFolder.add(terrainParams, 'regenerate').name('Random Seed');
 
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('keydown', onKeyDown);
@@ -469,4 +490,18 @@ function regenerate(seed: number) {
   material.uniforms.seedOffset.value.copy(seedToOffset(seed));
   bounds.update(renderer);
   updateNodeBounds(tree, material.uniforms.maxTerrainHeight.value);
+
+  // The new world is built underneath a camera that has not moved, so the ground it was
+  // standing on may now be a mountainside. Inside the terrain, front faces cull away and the
+  // view collapses to slivers of whatever is beyond -- which reads as "regenerate broke it".
+  // Lift clear if that happened, but never push down: the camera keeps whatever height the
+  // user flew to.
+  const floorY = bounds.sampleMax(mainCamera.position.x, mainCamera.position.z) * maxTerrainHeight;
+  const minY = floorY + CAMERA_CLEARANCE;
+  if (mainCamera.position.y < minY) {
+    const lift = minY - mainCamera.position.y;
+    mainCamera.position.y += lift;
+    controls.target.y += lift;
+    controls.update();
+  }
 }
