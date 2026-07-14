@@ -13,14 +13,15 @@ export class Node {
     public x: number,
     public y: number,
     public halfSize: number,
+    public maxLevel: number,
     public level = 0
   ) {
-    if (level < 5) {
+    if (level < maxLevel) {
       const subSize = halfSize / 2;
-      this.subTL = new Node(x - subSize, y - subSize, subSize, level + 1);
-      this.subTR = new Node(x + subSize, y - subSize, subSize, level + 1);
-      this.subBL = new Node(x - subSize, y + subSize, subSize, level + 1);
-      this.subBR = new Node(x + subSize, y + subSize, subSize, level + 1);
+      this.subTL = new Node(x - subSize, y - subSize, subSize, maxLevel, level + 1);
+      this.subTR = new Node(x + subSize, y - subSize, subSize, maxLevel, level + 1);
+      this.subBL = new Node(x - subSize, y + subSize, subSize, maxLevel, level + 1);
+      this.subBR = new Node(x + subSize, y + subSize, subSize, maxLevel, level + 1);
     }
   }
 

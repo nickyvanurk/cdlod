@@ -1,12 +1,34 @@
 // eslint-disable-next-line
 // @ts-ignore
-import ThreeStats from 'three/examples/jsm/libs/stats.module';
+import ThreeStatsModule from 'three/examples/jsm/libs/stats.module';
+
+/**
+ * The shipped stats.module.js and its @types/three declaration disagree, and the runtime is
+ * the one that is right: the module returns an object exposing `domElement`, and `Stats.Panel`
+ * is a plain function that works without `new`. The declaration describes neither, so `tsc`
+ * reports eleven errors against code that runs correctly -- which is why `npm run build`
+ * failed while `npm run dev` was fine. Describe the real shape rather than fight it.
+ */
+interface StatsPanel {
+  update(value: number, maxValue: number): void;
+}
+
+interface StatsInstance {
+  domElement: HTMLElement;
+  addPanel(panel: StatsPanel): StatsPanel;
+  update(): void;
+}
+
+const ThreeStats = ThreeStatsModule as unknown as {
+  new (): StatsInstance;
+  Panel(name: string, fg: string, bg: string): StatsPanel;
+};
 
 export class Stats {
   domElement = document.createElement('div');
 
   private readonly stats = new ThreeStats();
-  private readonly panels: ThreeStats.Panel[] = [];
+  private readonly panels: StatsPanel[] = [];
   private beginTime = 0;
 
   constructor(private readonly renderer: THREE.WebGLRenderer) {
